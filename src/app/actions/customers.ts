@@ -15,6 +15,32 @@ export async function createCustomer(formData: FormData) {
     return { error: 'Customer Name is required.' };
   }
 
+  // Validate Name length to prevent database field size errors or DoS
+  if (name.length > 255) {
+    return { error: 'Customer Name cannot exceed 255 characters.' };
+  }
+
+  // Email format validation (if specified)
+  const emailTrimmed = email ? email.trim() : '';
+  if (emailTrimmed) {
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!EMAIL_REGEX.test(emailTrimmed)) {
+      return { error: 'Invalid email address format.' };
+    }
+    if (emailTrimmed.length > 255) {
+      return { error: 'Email address cannot exceed 255 characters.' };
+    }
+  }
+
+  // Phone number validation (if specified)
+  const phoneTrimmed = phone ? phone.trim() : '';
+  if (phoneTrimmed) {
+    const PHONE_REGEX = /^\+?[0-9\s\-()]{7,20}$/;
+    if (!PHONE_REGEX.test(phoneTrimmed)) {
+      return { error: 'Invalid phone number format. Use 7-20 characters consisting of digits, spaces, hyphens, parentheses, and optional leading +.' };
+    }
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -38,11 +64,25 @@ export async function createCustomer(formData: FormData) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // SECURITY CHECK: Verify branchId belongs to caller's business if specified (prevents IDOR)
+    if (branchId && branchId !== 'all') {
+      const { data: branchCheck } = await supabaseAdmin
+        .from('branches')
+        .select('id')
+        .eq('id', branchId)
+        .eq('business_id', businessId)
+        .maybeSingle();
+
+      if (!branchCheck) {
+        return { error: 'Branch context not found or unauthorized.' };
+      }
+    }
+
     const { error } = await supabaseAdmin.from('customers').insert({
       business_id: businessId,
       name,
-      email: email || '',
-      phone: phone || '',
+      email: emailTrimmed,
+      phone: phoneTrimmed,
       branch_id: (branchId && branchId !== 'all') ? branchId : null,
       total_spend: 0,
     });

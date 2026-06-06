@@ -72,8 +72,28 @@ export async function createStaff(data: {
     return { error: 'All fields are required and at least one branch must be assigned.' };
   }
 
-  if (role === 'OWNER') {
-    return { error: 'Cannot assign OWNER role via this screen.' };
+  // Validate allowed roles (RBAC Injection prevention)
+  const allowedRoles = ['ADMIN', 'MANAGER', 'STAFF'];
+  if (!allowedRoles.includes(role)) {
+    return { error: 'Invalid role assignment. Only ADMIN, MANAGER, or STAFF roles are permitted.' };
+  }
+
+  // Server-side email format validation (OWASP / Input Validation)
+  const emailTrimmed = email.trim();
+  const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!EMAIL_REGEX.test(emailTrimmed)) {
+    return { error: 'Invalid email address format.' };
+  }
+
+  // Enforce password complexity for temporary password
+  if (tempPassword.length < 8) {
+    return { error: 'Temporary password must be at least 8 characters long.' };
+  }
+  if (!/[A-Z]/.test(tempPassword)) {
+    return { error: 'Temporary password must contain at least one uppercase letter.' };
+  }
+  if (!/[0-9]/.test(tempPassword)) {
+    return { error: 'Temporary password must contain at least one number.' };
   }
 
   try {
@@ -198,8 +218,10 @@ export async function editStaff(
     return { error: 'Full name, phone, role, and branch assignments are required.' };
   }
 
-  if (role === 'OWNER') {
-    return { error: 'Cannot assign OWNER role via this screen.' };
+  // Validate allowed roles (RBAC Injection prevention)
+  const allowedRoles = ['ADMIN', 'MANAGER', 'STAFF'];
+  if (!allowedRoles.includes(role)) {
+    return { error: 'Invalid role assignment. Only ADMIN, MANAGER, or STAFF roles are permitted.' };
   }
 
   try {

@@ -14,6 +14,11 @@ export async function createSale(
     return { error: 'Branch and items are required.' };
   }
 
+  // Pre-validate quantities to prevent negative-quantity stock exploits (OWASP A04:2021)
+  if (items.some(item => item.quantity <= 0)) {
+    return { error: 'All item quantities must be greater than zero.' };
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

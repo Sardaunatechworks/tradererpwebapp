@@ -13,10 +13,28 @@ export async function signUp(formData: FormData) {
     return { error: 'All fields are required' };
   }
 
+  // Server-side email format validation (OWASP / Input Validation)
+  const emailTrimmed = email.trim();
+  const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!EMAIL_REGEX.test(emailTrimmed)) {
+    return { error: 'Invalid email address format.' };
+  }
+
+  // Server-side password complexity validation
+  if (password.length < 8) {
+    return { error: 'Password must be at least 8 characters long.' };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { error: 'Password must contain at least one uppercase letter.' };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { error: 'Password must contain at least one number.' };
+  }
+
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: emailTrimmed,
     password,
     options: {
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`,
@@ -39,7 +57,7 @@ export async function signUp(formData: FormData) {
       );
       await supabaseAdmin.from('users').upsert({
         id: data.user.id,
-        email: email,
+        email: emailTrimmed,
         name: name,
         role: 'OWNER',
         status: 'active'
@@ -60,10 +78,16 @@ export async function signIn(formData: FormData) {
     return { error: 'Email and password are required' };
   }
 
+  const emailTrimmed = email.trim();
+  const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!EMAIL_REGEX.test(emailTrimmed)) {
+    return { error: 'Invalid email address format.' };
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({
-    email,
+    email: emailTrimmed,
     password,
   });
 

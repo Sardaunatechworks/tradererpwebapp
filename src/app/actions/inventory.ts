@@ -19,6 +19,25 @@ export async function createProduct(formData: FormData) {
     return { error: 'SKU and Product Name are required.' };
   }
 
+  // Pre-validate numeric boundaries (OWASP / Input Validation)
+  if (defaultPrice < 0) {
+    return { error: 'Default Selling Price cannot be negative.' };
+  }
+  if (costPrice < 0) {
+    return { error: 'Cost Price cannot be negative.' };
+  }
+  if (initialStock < 0) {
+    return { error: 'Initial Stock cannot be negative.' };
+  }
+
+  // Length checks to prevent database field size errors or DoS
+  if (sku.length > 100) {
+    return { error: 'SKU cannot exceed 100 characters.' };
+  }
+  if (name.length > 255) {
+    return { error: 'Product Name cannot exceed 255 characters.' };
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
