@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+  --background: #020617; /* Slate 950 */
+  --foreground: #f8fafc; /* Slate 50 */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), Inter, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+:root.light, html.light, .light {
+  --background: #ffffff !important;
+  --foreground: #0f172a !important;
+
+  --color-slate-950: #f8fafc !important;
+  --color-slate-900: #f1f5f9 !important;
+  --color-slate-800: #e2e8f0 !important;
+  --color-slate-700: #cbd5e1 !important;
+  --color-slate-600: #94a3b8 !important;
+  --color-slate-500: #64748b !important;
+  --color-slate-400: #475569 !important;
+  --color-slate-300: #1e293b !important;
+  --color-slate-200: #0f172a !important;
+  --color-slate-100: #020617 !important;
+  --color-slate-50: #0f172a !important;
+
+  --color-white: #0f172a !important;
+}
+
