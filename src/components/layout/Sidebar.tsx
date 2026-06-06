@@ -190,10 +190,10 @@ export default function Sidebar() {
   const allowedItems = menuItems.filter(item => !role || item.roles.includes(role));
 
   return (
-    <div className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col justify-between h-screen text-slate-300 select-none">
+    <div className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col h-screen h-dvh text-slate-300 select-none overflow-y-auto overscroll-contain scrollbar-thin">
       
       {/* Top Section */}
-      <div className="flex flex-col p-6 space-y-8">
+      <div className="flex-1 p-6 space-y-8">
         
         {/* Brand Header */}
         <div className="flex items-center gap-3">
@@ -278,7 +278,7 @@ export default function Sidebar() {
       </div>
 
       {/* Bottom Profile Section */}
-      <div className="p-6 border-t border-slate-800 space-y-4">
+      <div className="p-6 border-t border-slate-800 space-y-4 shrink-0 bg-slate-950">
         
         {/* User Badge */}
         <div className="flex items-center gap-3">

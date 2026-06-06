@@ -20,7 +20,7 @@ export default function AppLayoutWrapper({
       <div
         className={`fixed inset-y-0 left-0 z-50 transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out lg:flex shrink-0 h-screen`}
+        } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out lg:flex shrink-0 h-screen h-dvh`}
       >
         <Sidebar />
         
