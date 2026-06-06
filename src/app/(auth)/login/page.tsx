@@ -2,14 +2,14 @@
 
 import React, { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { signIn, signUp } from '@/app/actions/auth';
+import { signIn, signUp, sendPasswordResetEmail } from '@/app/actions/auth';
 import { Loader2, ArrowRight, ShieldAlert, Check } from 'lucide-react';
 import PasswordInput from '@/components/ui/PasswordInput';
 
 /* ──────────────────────────────────────────────────────────────────────────
    TAB: SIGN IN
 ────────────────────────────────────────────────────────────────────────── */
-function SignInTab() {
+function SignInTab({ onForgot }: { onForgot: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,9 +49,18 @@ function SignInTab() {
         </div>
 
         <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
-            Password
-          </label>
+          <div className="flex justify-between items-center mb-1.5">
+            <label className="block text-[10px] uppercase font-bold text-slate-400">
+              Password
+            </label>
+            <button
+              type="button"
+              onClick={onForgot}
+              className="text-[10px] text-blue-500 hover:text-blue-400 font-bold transition-colors cursor-pointer"
+            >
+              Forgot Password?
+            </button>
+          </div>
           <PasswordInput name="password" required autoComplete="current-password" />
         </div>
       </div>
@@ -176,9 +185,80 @@ function SignUpTab() {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+   TAB: FORGOT PASSWORD
+────────────────────────────────────────────────────────────────────────── */
+function ForgotTab({ onBack }: { onBack: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    const formData = new FormData(e.currentTarget);
+    const res = await sendPasswordResetEmail(formData);
+    if (res?.error) {
+      setError(res.error);
+      setLoading(false);
+    } else {
+      setSuccess('A password reset link has been sent to your email.');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in">
+      {error && (
+        <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 text-xs text-red-400 font-medium">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-emerald-950/40 border border-emerald-800 rounded-xl p-4 text-xs text-emerald-400 font-medium">
+          {success}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
+            Email Address
+          </label>
+          <input
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="name@company.com"
+            className="block w-full border border-slate-800 bg-slate-900 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-600"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-lg hover:bg-blue-700 transition-all shadow-md shadow-blue-900/10 disabled:opacity-50 cursor-pointer"
+      >
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <>
+            Send Reset Link <ArrowRight className="w-4 h-4" />
+          </>
+        )}
+      </button>
+    </form>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
    MAIN AUTH PAGE (with tab toggle + blocked account modal)
 ────────────────────────────────────────────────────────────────────────── */
-type Tab = 'signin' | 'signup';
+type Tab = 'signin' | 'signup' | 'forgot';
 
 function AuthContent() {
   const searchParams = useSearchParams();
@@ -222,37 +302,47 @@ function AuthContent() {
           <p className="text-sm text-slate-400 font-medium leading-relaxed">
             {tab === 'signin'
               ? 'Welcome back. Sign in to your trading workspace.'
-              : 'Create a new account to launch your trading workspace.'}
+              : tab === 'signup'
+              ? 'Create a new account to launch your trading workspace.'
+              : 'Enter your email to receive a password reset link.'}
           </p>
         </div>
 
         {/* Tab Toggle */}
-        <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
-          <button
-            onClick={() => setTab('signin')}
-            className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-              tab === 'signin'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => setTab('signup')}
-            className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-              tab === 'signup'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            Create Account
-          </button>
-        </div>
+        {tab !== 'forgot' && (
+          <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setTab('signin')}
+              className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                tab === 'signin'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => setTab('signup')}
+              className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                tab === 'signup'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+        )}
 
         {/* Form Panel */}
         <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl">
-          {tab === 'signin' ? <SignInTab /> : <SignUpTab />}
+          {tab === 'signin' ? (
+            <SignInTab onForgot={() => setTab('forgot')} />
+          ) : tab === 'signup' ? (
+            <SignUpTab />
+          ) : (
+            <ForgotTab onBack={() => setTab('signin')} />
+          )}
         </div>
 
         {/* Help text */}
@@ -267,7 +357,7 @@ function AuthContent() {
                 Create one free
               </button>
             </>
-          ) : (
+          ) : tab === 'signup' ? (
             <>
               Already have an account?{' '}
               <button
@@ -275,6 +365,16 @@ function AuthContent() {
                 className="text-blue-500 hover:text-blue-400 font-bold transition-colors cursor-pointer"
               >
                 Sign in
+              </button>
+            </>
+          ) : (
+            <>
+              Remembered your password?{' '}
+              <button
+                onClick={() => setTab('signin')}
+                className="text-blue-500 hover:text-blue-400 font-bold transition-colors cursor-pointer"
+              >
+                Go back to sign in
               </button>
             </>
           )}
