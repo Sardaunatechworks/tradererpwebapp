@@ -20,14 +20,27 @@ import {
   History,
   Sun,
   Moon,
-  LifeBuoy
+  LifeBuoy,
+  Bell
 } from 'lucide-react';
 import { getBranches } from '@/app/actions/branches';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const supabase = createClient();
-  const { currentBranchId, setCurrentBranchId, theme, toggleTheme, setSidebarOpen } = useUIStore();
+  const { 
+    currentBranchId, 
+    setCurrentBranchId, 
+    theme, 
+    toggleTheme, 
+    setSidebarOpen,
+    lastAttendedInventory,
+    lastAttendedSupport,
+    lastAttendedNotifications,
+    setLastAttendedInventory,
+    setLastAttendedSupport,
+    setLastAttendedNotifications
+  } = useUIStore();
 
   const [role, setRole] = useState<string | null>(null);
   const [name, setName] = useState<string>('');
@@ -37,6 +50,18 @@ export default function Sidebar() {
   // Alert/Notification states (red pulsing indicators)
   const [hasLowStock, setHasLowStock] = useState(false);
   const [hasSupportAlert, setHasSupportAlert] = useState(false);
+  const [hasNotificationsAlert, setHasNotificationsAlert] = useState(false);
+
+  // Observe pathname changes to update attended timestamps in Zustand store
+  useEffect(() => {
+    if (pathname === '/inventory') {
+      setLastAttendedInventory(Date.now());
+    } else if (pathname === '/support') {
+      setLastAttendedSupport(Date.now());
+    } else if (pathname === '/notifications') {
+      setLastAttendedNotifications(Date.now());
+    }
+  }, [pathname, setLastAttendedInventory, setLastAttendedSupport, setLastAttendedNotifications]);
 
   useEffect(() => {
     async function fetchUserContext() {
@@ -84,7 +109,6 @@ export default function Sidebar() {
     fetchUserContext();
   }, [supabase, setCurrentBranchId]);
 
-  // Periodic alert check effect (runs when branch context shifts)
   useEffect(() => {
     async function checkAlerts() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -99,19 +123,23 @@ export default function Sidebar() {
       const bizId = user.app_metadata?.business_id || profile?.business_id;
       if (!bizId) return;
 
-      // 1. Check support tickets
+      // 1. Check support tickets (time-based check against lastAttendedSupport)
       const { data: tickets } = await supabase
         .from('support_tickets')
-        .select('status, admin_response')
+        .select('status, admin_response, updated_at')
         .eq('business_id', bizId);
 
-      const hasTicketsAlert = tickets ? tickets.some(t => t.status === 'open' || (t.status === 'resolved' && t.admin_response)) : false;
-      setHasSupportAlert(hasTicketsAlert);
+      const alertTickets = tickets ? tickets.filter(t => t.status === 'open' || (t.status === 'resolved' && t.admin_response)) : [];
+      const newestTicketTime = alertTickets.reduce((max, t) => {
+        const tTime = new Date(t.updated_at).getTime();
+        return tTime > max ? tTime : max;
+      }, 0);
+      setHasSupportAlert(newestTicketTime > lastAttendedSupport);
 
-      // 2. Check low stock items
+      // 2. Check low stock items (time-based check against lastAttendedInventory)
       let query = supabase
         .from('inventory')
-        .select('quantity, reorder_level')
+        .select('quantity, reorder_level, updated_at')
         .eq('business_id', bizId);
 
       const activeBranch = staffBranchId || currentBranchId;
@@ -120,12 +148,26 @@ export default function Sidebar() {
       }
 
       const { data: inv } = await query;
-      const lowStock = inv ? inv.some(item => item.quantity <= item.reorder_level) : false;
-      setHasLowStock(lowStock);
+      const lowStockItems = inv ? inv.filter(item => item.quantity <= item.reorder_level) : [];
+      const newestLowStockTime = lowStockItems.reduce((max, item) => {
+        const itemTime = new Date(item.updated_at).getTime();
+        return itemTime > max ? itemTime : max;
+      }, 0);
+      setHasLowStock(newestLowStockTime > lastAttendedInventory);
+
+      // 3. Check announcements/notifications (time-based check against lastAttendedNotifications)
+      const { data: ann } = await supabase
+        .from('announcements')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const newestAnnTime = ann && ann.length > 0 ? new Date(ann[0].created_at).getTime() : 0;
+      setHasNotificationsAlert(newestAnnTime > lastAttendedNotifications);
     }
 
     checkAlerts();
-  }, [supabase, currentBranchId, staffBranchId]);
+  }, [supabase, currentBranchId, staffBranchId, lastAttendedInventory, lastAttendedSupport, lastAttendedNotifications]);
 
   const handleBranchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setCurrentBranchId(e.target.value);
@@ -142,6 +184,7 @@ export default function Sidebar() {
     { name: 'Staff Management', href: '/staff', icon: Shield, roles: ['OWNER', 'ADMIN'] },
     { name: 'Branch Management', href: '/branches', icon: Building2, roles: ['OWNER', 'ADMIN'] },
     { name: 'Support Center', href: '/support', icon: LifeBuoy, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
+    { name: 'Notifications', href: '/notifications', icon: Bell, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
   ];
 
   const allowedItems = menuItems.filter(item => !role || item.roles.includes(role));
@@ -221,7 +264,8 @@ export default function Sidebar() {
 
                 {/* Pulsing red notification dot */}
                 {((item.name === 'Inventory' && hasLowStock) || 
-                  (item.name === 'Support Center' && hasSupportAlert)) && (
+                  (item.name === 'Support Center' && hasSupportAlert) ||
+                  (item.name === 'Notifications' && hasNotificationsAlert)) && (
                   <span className="relative flex h-2.5 w-2.5 mr-1 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
