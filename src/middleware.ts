@@ -44,8 +44,8 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // /signup redirects to /login?tab=signup via page component; treat both as public
-  const isPublicRoute = path === '/login' || path === '/signup';
+  // /signup redirects to /login?tab=signup via page component; treat both and root / as public
+  const isPublicRoute = path === '/login' || path === '/signup' || path === '/';
 
   if (!user) {
     // If not logged in and not on a public route, redirect to login
@@ -99,13 +99,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublicRoute) {
-    // If logged in and trying to go to login/signup, redirect based on role
+    // If logged in and trying to go to login/signup/root, redirect based on role
     if (role === 'super_admin') {
       url.pathname = '/platform';
     } else if (!businessId) {
       url.pathname = '/onboarding';
     } else {
-      url.pathname = '/';
+      url.pathname = '/dashboard';
     }
     return NextResponse.redirect(url);
   }
@@ -120,7 +120,7 @@ export async function middleware(request: NextRequest) {
   } else {
     // Regular users trying to access /platform
     if (path.startsWith('/platform')) {
-      url.pathname = '/';
+      url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
 
@@ -132,7 +132,7 @@ export async function middleware(request: NextRequest) {
 
     // Regular users who have onboarded and try to access /onboarding
     if (businessId && path === '/onboarding') {
-      url.pathname = '/';
+      url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
   }

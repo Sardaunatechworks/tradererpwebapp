@@ -174,7 +174,7 @@ export default function Sidebar() {
   };
 
   const menuItems = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Inventory', href: '/inventory', icon: Package, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Sales POS', href: '/sales', icon: ShoppingCart, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Customers', href: '/customers', icon: Users, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
@@ -257,7 +257,7 @@ export default function Sidebar() {
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border-transparent'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 pointer-events-none">
                   <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                   <span>{item.name}</span>
                 </div>
@@ -266,7 +266,7 @@ export default function Sidebar() {
                 {((item.name === 'Inventory' && hasLowStock) || 
                   (item.name === 'Support Center' && hasSupportAlert) ||
                   (item.name === 'Notifications' && hasNotificationsAlert)) && (
-                  <span className="relative flex h-2.5 w-2.5 mr-1 shrink-0">
+                  <span className="relative flex h-2.5 w-2.5 mr-1 shrink-0 pointer-events-none">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                   </span>
@@ -274,11 +274,27 @@ export default function Sidebar() {
               </Link>
             );
           })}
+
+          {/* Exit POS / Logout button */}
+          <button
+            onClick={async () => {
+              const { createClient } = await import('@/lib/supabase/client');
+              const supabase = createClient();
+              await supabase.auth.signOut();
+              window.location.href = '/login';
+            }}
+            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border border-transparent text-slate-400 hover:text-red-400 hover:bg-slate-900/40 mt-4 group"
+          >
+            <div className="flex items-center gap-3 pointer-events-none">
+              <LogOut className="w-4 h-4 text-slate-500 group-hover:text-red-400 transition-colors" />
+              <span>Exit POS</span>
+            </div>
+          </button>
         </nav>
       </div>
 
       {/* Bottom Profile Section */}
-      <div className="p-6 border-t border-slate-800 space-y-4 shrink-0 bg-slate-950">
+      <div className="p-6 border-t border-slate-800 shrink-0 bg-slate-950">
         
         {/* User Badge */}
         <div className="flex items-center gap-3">
@@ -292,35 +308,6 @@ export default function Sidebar() {
             </span>
           </div>
         </div>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="w-full flex items-center justify-center gap-2 border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white font-bold text-[10px] uppercase tracking-wider py-2 rounded-lg transition-all cursor-pointer"
-        >
-          {theme === 'dark' ? (
-            <>
-              <Sun className="w-3.5 h-3.5 text-amber-500" /> Light Mode
-            </>
-          ) : (
-            <>
-              <Moon className="w-3.5 h-3.5 text-indigo-400" /> Dark Mode
-            </>
-          )}
-        </button>
-
-        {/* Log Out */}
-        <button
-          onClick={async () => {
-            const { createClient } = await import('@/lib/supabase/client');
-            const supabase = createClient();
-            await supabase.auth.signOut();
-            window.location.href = '/login';
-          }}
-          className="w-full flex items-center justify-center gap-2 border border-slate-800 hover:border-red-900 hover:bg-red-950/20 text-slate-400 hover:text-red-400 font-bold text-[10px] uppercase tracking-wider py-2 rounded-lg transition-all cursor-pointer"
-        >
-          <LogOut className="w-3.5 h-3.5" /> Exit POS
-        </button>
       </div>
     </div>
   );

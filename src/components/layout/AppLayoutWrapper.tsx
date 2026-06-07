@@ -3,7 +3,8 @@
 import React from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { useUIStore } from '@/stores/uiStore';
-import { Menu, X } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Menu, X, ArrowLeft, Sun, Moon } from 'lucide-react';
 
 export default function AppLayoutWrapper({
   businessName,
@@ -12,7 +13,8 @@ export default function AppLayoutWrapper({
   businessName: string;
   children: React.ReactNode;
 }) {
-  const { sidebarOpen, setSidebarOpen, toggleSidebar } = useUIStore();
+  const { sidebarOpen, setSidebarOpen, toggleSidebar, theme, toggleTheme } = useUIStore();
+  const pathname = usePathname();
 
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100 font-sans overflow-hidden">
@@ -28,7 +30,7 @@ export default function AppLayoutWrapper({
         {sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(false)}
-            className="absolute top-4 right-[-48px] p-2 rounded-lg bg-slate-950 text-slate-400 hover:text-white border border-slate-800 lg:hidden shadow-lg"
+            className="absolute top-4 right-[-48px] p-2 rounded-lg bg-slate-950 text-slate-400 hover:text-white border border-slate-800 lg:hidden shadow-lg cursor-pointer"
             aria-label="Close Sidebar"
           >
             <X className="w-5 h-5" />
@@ -50,24 +52,51 @@ export default function AppLayoutWrapper({
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSidebar}
-              className="lg:hidden p-2 rounded-lg bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border border-slate-800 transition-colors"
+              className="lg:hidden p-2 rounded-lg bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border border-slate-800 transition-colors cursor-pointer"
               aria-label="Toggle Sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
+
+            {/* Back button for non-dashboard paths */}
+            {pathname !== '/dashboard' && pathname !== '/' && !pathname.startsWith('/platform') && (
+              <button
+                onClick={() => window.history.back()}
+                className="p-2 rounded-lg bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border border-slate-800 transition-colors flex items-center justify-center cursor-pointer"
+                aria-label="Go Back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+
             <span className="text-[9px] uppercase font-black tracking-wider text-slate-500 hidden sm:inline">
               Workspace Context
             </span>
           </div>
 
-          {businessName && (
-            <div className="flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 px-3.5 py-1.5 rounded-xl">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-              <span className="text-[10px] font-black text-white tracking-tight uppercase">
-                {businessName}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Header Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white border border-slate-800 transition-colors cursor-pointer flex items-center justify-center"
+              aria-label="Toggle Theme"
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-500" />
+              ) : (
+                <Moon className="w-4 h-4 text-indigo-400" />
+              )}
+            </button>
+
+            {businessName && (
+              <div className="flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 px-3.5 py-1.5 rounded-xl">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                <span className="text-[10px] font-black text-white tracking-tight uppercase">
+                  {businessName}
+                </span>
+              </div>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-slate-950 p-4 lg:p-8">

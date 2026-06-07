@@ -59,10 +59,10 @@ export default function OnboardingPage() {
       const { data } = await supabase.auth.refreshSession();
       if (data?.session) {
         router.refresh();
-        router.push('/');
+        router.push('/dashboard');
       } else {
         // Fallback redirect
-        window.location.href = '/';
+        window.location.href = '/dashboard';
       }
     }
   };

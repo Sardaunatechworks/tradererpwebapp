@@ -96,6 +96,16 @@ function SignUpTab() {
     setError(null);
     setSuccess(false);
     const formData = new FormData(e.currentTarget);
+    
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      setLoading(false);
+      return;
+    }
+
     const res = await signUp(formData);
     if (res?.error) {
       setError(res.error);
@@ -164,6 +174,13 @@ function SignUpTab() {
             Password
           </label>
           <PasswordInput name="password" required autoComplete="new-password" />
+        </div>
+
+        <div>
+          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
+            Confirm Password
+          </label>
+          <PasswordInput name="confirmPassword" required autoComplete="new-password" />
         </div>
       </div>
 
