@@ -141,17 +141,6 @@ export default function AuthLayout({
       {/* ─── Right Auth Panel ─── */}
       <div className="flex-1 flex flex-col min-h-screen lg:min-h-0">
 
-        {/* Mobile brand header */}
-        <div className="lg:hidden flex items-center gap-3 px-6 pt-8 pb-4">
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center font-black text-lg text-white shadow-lg shadow-blue-600/20">
-            T
-          </div>
-          <div>
-            <span className="font-black text-white text-base tracking-tight leading-none block">TraderERP</span>
-            <span className="text-[9px] text-slate-500 font-bold tracking-widest uppercase block mt-0.5">Enterprise Platform</span>
-          </div>
-        </div>
-
         {/* Auth Form Container */}
         <div className="flex-1 flex items-center justify-center p-6 py-8">
           <div className="w-full max-w-md">

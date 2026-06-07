@@ -131,7 +131,7 @@ export default async function LandingPage() {
                     href="/login"
                     className="flex items-center justify-center gap-2 bg-slate-900 border border-slate-800 hover:border-slate-700 text-white font-bold text-sm uppercase tracking-wider py-4 px-8 rounded-xl transition-all"
                   >
-                    Employee Log In <ChevronRight className="w-4 h-4" />
+                    Login <ChevronRight className="w-4 h-4" />
                   </Link>
                 </>
               )}
@@ -141,9 +141,6 @@ export default async function LandingPage() {
             <div className="flex items-center gap-6 pt-4 border-t border-slate-900/60">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" /> Multi-Tenant Isolation
-              </div>
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                <Layers className="w-4 h-4 text-indigo-500" /> Offline POS Ready
               </div>
             </div>
           </div>
@@ -158,7 +155,6 @@ export default async function LandingPage() {
                   <span className="w-3 h-3 rounded-full bg-yellow-500/55" />
                   <span className="w-3 h-3 rounded-full bg-green-500/55" />
                 </div>
-                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Live System Preview</span>
               </div>
               
               {/* Dummy Console UI elements */}
@@ -237,7 +233,7 @@ export default async function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-slate-900/60 py-8 px-6 bg-slate-950">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-600 font-semibold uppercase tracking-wider">
-          <span>&copy; {new Date().getFullYear()} TraderERP Inc. All rights reserved.</span>
+          <span>Copyright 2026 TraderERP Sardauna Tech Lab Ltd, All Rights Reseved.</span>
           <div className="flex gap-4">
             <span className="hover:text-slate-400 cursor-default">Privacy</span>
             <span className="hover:text-slate-400 cursor-default">Terms</span>
