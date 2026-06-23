@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { onboardBusiness } from '@/app/actions/onboarding';
 import { createClient } from '@/lib/supabase/client';
 import { Building2, MapPin, Play, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
+import Logo from '@/components/layout/Logo';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -72,15 +73,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-xl bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl p-8 space-y-8 animate-in fade-in zoom-in duration-300">
         
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-2xl shadow-lg shadow-blue-500/20">
-            T
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white leading-none">TraderERP</h1>
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold block mt-1">Workspace Setup</span>
-          </div>
-        </div>
+        <Logo iconSize="w-12 h-12" textColorMode="dark" subtitle="Workspace Setup" gap="gap-4" />
 
         {/* Step Progress Bar */}
         <div className="flex items-center gap-2">

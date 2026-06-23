@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createCustomer } from '@/app/actions/customers';
 import { Plus, Search, Loader2, Users, TrendingUp } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { db } from '@/lib/offline/db';
 
 interface Props {
   initialCustomers: any[];
@@ -18,12 +19,41 @@ export default function CustomerList({ initialCustomers, branches, role }: Props
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [localCustomers, setLocalCustomers] = useState<any[]>(initialCustomers);
+
+  // Sync cache on load
+  useEffect(() => {
+    const syncLocal = async () => {
+      try {
+        if (initialCustomers.length > 0) {
+          await db.customers.clear();
+          await db.customers.bulkPut(initialCustomers.map(c => ({
+            id: c.id,
+            name: c.name,
+            email: c.email || undefined,
+            phone: c.phone || undefined,
+            branch_id: c.branch_id || 'all',
+            business_id: c.business_id,
+            total_spend: parseFloat(c.total_spend || '0')
+          })));
+          setLocalCustomers(initialCustomers);
+        } else {
+          const cached = await db.customers.toArray();
+          setLocalCustomers(cached);
+        }
+      } catch (err) {
+        console.error('CustomerList offline cache sync error:', err);
+      }
+    };
+    syncLocal();
+  }, [initialCustomers]);
+
   const activeBranchId = (role === 'MANAGER' || role === 'STAFF') ? currentBranchId : currentBranchId;
 
   // Filter customers based on registered branch
   const branchCustomers = activeBranchId === 'all'
-    ? initialCustomers
-    : initialCustomers.filter(c => c.branch_id === activeBranchId);
+    ? localCustomers
+    : localCustomers.filter(c => c.branch_id === activeBranchId);
 
   const filtered = branchCustomers.filter(c => 
     c.name.toLowerCase().includes(filterText.toLowerCase()) ||
@@ -37,6 +67,45 @@ export default function CustomerList({ initialCustomers, branches, role }: Props
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const phone = formData.get('phone') as string;
+    const branchId = formData.get('branchId') as string;
+
+    // Intercept Offline Mode
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      try {
+        const offlineCustomerId = `OFFLINE-C-${crypto.randomUUID().slice(0, 8)}`;
+        const newCust = {
+          id: offlineCustomerId,
+          name,
+          email: email || undefined,
+          phone: phone || undefined,
+          branch_id: branchId || 'all',
+          business_id: 'offline',
+          total_spend: 0
+        };
+        
+        await db.customers.add(newCust);
+        
+        await db.sync_queue.add({
+          type: 'CUSTOMER_CREATED',
+          payload: newCust,
+          status: 'queued',
+          created_at: new Date().toISOString()
+        });
+
+        const updatedList = await db.customers.toArray();
+        setLocalCustomers(updatedList);
+        setShowAddModal(false);
+        setLoading(false);
+      } catch (err: any) {
+        setError(`Failed to save customer offline: ${err.message}`);
+        setLoading(false);
+      }
+      return;
+    }
+
     const res = await createCustomer(formData);
 
     if (res?.error) {

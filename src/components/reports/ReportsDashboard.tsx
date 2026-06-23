@@ -66,6 +66,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
   async function fetchReportData() {
     setLoading(true);
     setError(null);
+    setReportData(null); // Clear previous reports to prevent rendering mismatched tab datasets
     try {
       const res = await getReportsData(activeTab, startDate, endDate, branchIdFilter);
       if (res?.error) {
@@ -345,7 +346,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total Revenue</span>
                     <span className="text-2xl font-black text-white block">
-                      ₦{reportData.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₦{(reportData.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
@@ -357,11 +358,15 @@ export default function ReportsDashboard({ branches, role }: Props) {
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Realized Profit</span>
-                    <span className="text-2xl font-black text-emerald-500 block">
-                      ₦{reportData.totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <span className={`text-2xl font-black block ${(reportData.totalProfit || 0) < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                      ₦{(reportData.totalProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                  <div className={`w-12 h-12 rounded-xl border flex items-center justify-center ${
+                    (reportData.totalProfit || 0) < 0 
+                      ? 'bg-rose-600/10 border-rose-500/20 text-rose-500' 
+                      : 'bg-emerald-600/10 border-emerald-500/20 text-emerald-500'
+                  }`}>
                     <Coins className="w-6 h-6" />
                   </div>
                 </div>
@@ -371,7 +376,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Transactions</span>
                     <span className="text-2xl font-black text-white block">
-                      {reportData.transactionCount}
+                      {reportData.transactionCount || 0}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
@@ -384,7 +389,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Avg basket size</span>
                     <span className="text-2xl font-black text-white block">
-                      ₦{(reportData.transactionCount > 0 ? reportData.totalRevenue / reportData.transactionCount : 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₦{(reportData.transactionCount > 0 ? (reportData.totalRevenue || 0) / reportData.transactionCount : 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
@@ -404,11 +409,11 @@ export default function ReportsDashboard({ branches, role }: Props) {
                     <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block mt-1">Timeline representation (Revenue vs Profit)</span>
                   </div>
                   <div className="h-64 w-full">
-                    {reportData.dailyTrend.length === 0 ? (
+                    {!reportData.dailyTrend || reportData.dailyTrend.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-xs text-slate-500">No trend data.</div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={reportData.dailyTrend}>
+                        <AreaChart data={reportData.dailyTrend || []}>
                           <defs>
                             <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/>
@@ -439,12 +444,12 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   
                   <div className="space-y-4 text-xs font-semibold">
                     {[
-                      { id: 'cash', name: 'Cash', color: 'bg-blue-500', amount: reportData.paymentMethods.cash },
-                      { id: 'card', name: 'Card Payments', color: 'bg-emerald-500', amount: reportData.paymentMethods.card },
-                      { id: 'bank_transfer', name: 'Bank Transfer', color: 'bg-amber-500', amount: reportData.paymentMethods.bank_transfer },
-                      { id: 'store_credit', name: 'Store Credit (Debt)', color: 'bg-red-500', amount: reportData.paymentMethods.store_credit },
+                      { id: 'cash', name: 'Cash', color: 'bg-blue-500', amount: reportData.paymentMethods?.cash || 0 },
+                      { id: 'card', name: 'Card Payments', color: 'bg-emerald-500', amount: reportData.paymentMethods?.card || 0 },
+                      { id: 'bank_transfer', name: 'Bank Transfer', color: 'bg-amber-500', amount: reportData.paymentMethods?.bank_transfer || 0 },
+                      { id: 'store_credit', name: 'Store Credit (Debt)', color: 'bg-red-500', amount: reportData.paymentMethods?.store_credit || 0 },
                     ].map((pm) => {
-                      const share = reportData.totalRevenue > 0 ? (pm.amount / reportData.totalRevenue) * 100 : 0;
+                      const share = (reportData.totalRevenue || 0) > 0 ? (pm.amount / reportData.totalRevenue) * 100 : 0;
                       return (
                         <div key={pm.id} className="space-y-2">
                           <div className="flex justify-between text-slate-400">
@@ -481,11 +486,11 @@ export default function ReportsDashboard({ branches, role }: Props) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900 font-semibold">
-                      {reportData.dailyTrend.map((row: any) => (
+                      {(reportData.dailyTrend || []).map((row: any) => (
                         <tr key={row.date} className="hover:bg-slate-900/20 text-slate-300">
                           <td className="py-3 px-4">{row.date}</td>
-                          <td className="py-3 px-4 text-white">₦{row.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          <td className="py-3 px-4 text-right text-emerald-500">₦{row.profit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="py-3 px-4 text-white">₦{(row.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className={`py-3 px-4 text-right ${(row.profit || 0) < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>₦{(row.profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -507,7 +512,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total Sales value</span>
                     <span className="text-2xl font-black text-white block">
-                      ₦{reportData.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₦{(reportData.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
@@ -518,11 +523,15 @@ export default function ReportsDashboard({ branches, role }: Props) {
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Realized Profit</span>
-                    <span className="text-2xl font-black text-emerald-500 block">
-                      ₦{reportData.totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <span className={`text-2xl font-black block ${(reportData.totalProfit || 0) < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                      ₦{(reportData.totalProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                  <div className={`w-12 h-12 rounded-xl border flex items-center justify-center ${
+                    (reportData.totalProfit || 0) < 0 
+                      ? 'bg-rose-600/10 border-rose-500/20 text-rose-500' 
+                      : 'bg-emerald-600/10 border-emerald-500/20 text-emerald-500'
+                  }`}>
                     <Coins className="w-6 h-6" />
                   </div>
                 </div>
@@ -531,7 +540,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Invoices logged</span>
                     <span className="text-2xl font-black text-white block">
-                      {reportData.totalSalesCount}
+                      {reportData.totalSalesCount || 0}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
@@ -543,7 +552,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Distinct Top Items</span>
                     <span className="text-2xl font-black text-white block">
-                      {reportData.topProducts.length}
+                      {reportData.topProducts?.length || 0}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
@@ -574,17 +583,17 @@ export default function ReportsDashboard({ branches, role }: Props) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-900 font-semibold">
-                        {reportData.topProducts.length === 0 ? (
+                        {!reportData.topProducts || reportData.topProducts.length === 0 ? (
                           <tr>
                             <td colSpan={4} className="py-8 text-center text-slate-500">No items sold.</td>
                           </tr>
                         ) : (
-                          reportData.topProducts.map((p: any) => (
+                          (reportData.topProducts || []).map((p: any) => (
                             <tr key={p.sku} className="hover:bg-slate-900/20 text-slate-300">
                               <td className="py-3 px-4 text-white font-bold">{p.name}</td>
                               <td className="py-3 px-4 font-mono text-[10px] text-blue-500">{p.sku}</td>
                               <td className="py-3 px-4 text-center font-bold text-emerald-400">{p.quantity} units</td>
-                              <td className="py-3 px-4 text-right text-white">₦{p.revenue.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-right text-white">₦{(p.revenue || 0).toLocaleString()}</td>
                             </tr>
                           ))
                         )}
@@ -600,16 +609,16 @@ export default function ReportsDashboard({ branches, role }: Props) {
                     <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block mt-1">Top 5 Products</span>
                   </div>
                   <div className="h-64 w-full">
-                    {reportData.topProducts.length === 0 ? (
+                    {!reportData.topProducts || reportData.topProducts.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-xs text-slate-500">No data.</div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={reportData.topProducts.slice(0, 5)} layout="vertical" margin={{ left: -10, right: 10 }}>
+                        <BarChart data={(reportData.topProducts || []).slice(0, 5)} layout="vertical" margin={{ left: -10, right: 10 }}>
                           <XAxis type="number" stroke="#475569" fontSize={9} tickLine={false} axisLine={false} />
                           <YAxis type="category" dataKey="sku" stroke="#475569" fontSize={9} tickLine={false} axisLine={false} />
                           <Tooltip />
                           <Bar dataKey="quantity" fill="#2563eb" radius={[0, 4, 4, 0]}>
-                            {reportData.topProducts.slice(0, 5).map((entry: any, index: number) => (
+                            {(reportData.topProducts || []).slice(0, 5).map((entry: any, index: number) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Bar>
@@ -641,18 +650,18 @@ export default function ReportsDashboard({ branches, role }: Props) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900 font-semibold">
-                      {reportData.invoices.length === 0 ? (
+                      {!reportData.invoices || reportData.invoices.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-8 text-center text-slate-500">No invoices logged.</td>
                         </tr>
                       ) : (
-                        reportData.invoices.map((inv: any) => (
+                        (reportData.invoices || []).map((inv: any) => (
                           <tr key={inv.id} className="hover:bg-slate-900/20 text-slate-300">
                             <td className="py-3 px-4 font-mono text-[10px] text-blue-500 font-bold">#{inv.id.slice(0, 8)}...</td>
                             <td className="py-3 px-4">{new Date(inv.created_at).toLocaleString()}</td>
                             <td className="py-3 px-4">{inv.cashier?.name || 'Staff Member'}</td>
                             <td className="py-3 px-4">{inv.customers?.name || 'Walk-in Customer'}</td>
-                            <td className="py-3 px-4 uppercase text-[10px] text-slate-400">{inv.payment_method.replace('_', ' ')}</td>
+                            <td className="py-3 px-4 uppercase text-[10px] text-slate-400">{inv.payment_method?.replace('_', ' ')}</td>
                             <td className="py-3 px-4 text-right text-white font-bold">₦{parseFloat(inv.total_amount || '0').toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                           </tr>
                         ))
@@ -676,7 +685,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total stock level</span>
                     <span className="text-2xl font-black text-white block">
-                      {reportData.totalItems} units
+                      {reportData.totalItems || 0} units
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
@@ -688,7 +697,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Cost valuation</span>
                     <span className="text-2xl font-black text-white block">
-                      ₦{reportData.costValuation.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₦{(reportData.costValuation || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
@@ -700,7 +709,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Retail valuation</span>
                     <span className="text-2xl font-black text-white block">
-                      ₦{reportData.retailValuation.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₦{(reportData.retailValuation || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
@@ -712,7 +721,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Low stock items</span>
                     <span className="text-2xl font-black text-red-500 block">
-                      {reportData.lowStockCount} items
+                      {reportData.lowStockCount || 0} items
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500">
@@ -742,12 +751,12 @@ export default function ReportsDashboard({ branches, role }: Props) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900 font-semibold">
-                      {reportData.inventory.length === 0 ? (
+                      {!reportData.inventory || reportData.inventory.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-8 text-center text-slate-500">No stock in this branch.</td>
                         </tr>
                       ) : (
-                        reportData.inventory.map((row: any) => {
+                        (reportData.inventory || []).map((row: any) => {
                           const prod = row.products || {};
                           const cost = parseFloat(prod.cost_price || '0');
                           const price = parseFloat(prod.default_price || '0');
@@ -796,12 +805,12 @@ export default function ReportsDashboard({ branches, role }: Props) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900 font-semibold">
-                      {reportData.movements.length === 0 ? (
+                      {!reportData.movements || reportData.movements.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-8 text-center text-slate-500">No stock movements found in this period.</td>
                         </tr>
                       ) : (
-                        reportData.movements.map((move: any) => (
+                        (reportData.movements || []).map((move: any) => (
                           <tr key={move.id} className="hover:bg-slate-900/20 text-slate-300">
                             <td className="py-3 px-4">{new Date(move.created_at).toLocaleString()}</td>
                             <td className="py-3 px-4 space-y-0.5">
@@ -838,7 +847,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Outstanding credit dues</span>
                     <span className="text-2xl font-black text-red-500 block">
-                      ₦{reportData.overallDebt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₦{(reportData.overallDebt || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500">
@@ -850,7 +859,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                   <div className="space-y-1.5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Debtors count</span>
                     <span className="text-2xl font-black text-white block">
-                      {reportData.debtorsCount} clients
+                      {reportData.debtorsCount || 0} clients
                     </span>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
@@ -879,12 +888,12 @@ export default function ReportsDashboard({ branches, role }: Props) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900 font-semibold">
-                      {reportData.debtors.length === 0 ? (
+                      {!reportData.debtors || reportData.debtors.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="py-8 text-center text-slate-500">No debts recorded.</td>
                         </tr>
                       ) : (
-                        reportData.debtors.map((row: any) => (
+                        (reportData.debtors || []).map((row: any) => (
                           <tr key={row.email} className="hover:bg-slate-900/20 text-slate-300">
                             <td className="py-3 px-4 text-white font-bold">{row.name}</td>
                             <td className="py-3 px-4 font-mono space-y-0.5">
@@ -893,7 +902,7 @@ export default function ReportsDashboard({ branches, role }: Props) {
                             </td>
                             <td className="py-3 px-4 text-center font-bold">{row.transactionCount} times</td>
                             <td className="py-3 px-4 text-slate-400">{new Date(row.lastDate).toLocaleString()}</td>
-                            <td className="py-3 px-4 text-right text-red-500 font-bold text-sm">₦{row.totalDebt.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td className="py-3 px-4 text-right text-red-500 font-bold text-sm">₦{(row.totalDebt || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                           </tr>
                         ))
                       )}
@@ -930,17 +939,17 @@ export default function ReportsDashboard({ branches, role }: Props) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-900 font-semibold">
-                        {reportData.comparison.length === 0 ? (
+                        {!reportData.comparison || reportData.comparison.length === 0 ? (
                           <tr>
                             <td colSpan={4} className="py-8 text-center text-slate-500">No branch comparisons.</td>
                           </tr>
                         ) : (
-                          reportData.comparison.map((row: any) => (
+                          (reportData.comparison || []).map((row: any) => (
                             <tr key={row.id} className="hover:bg-slate-900/20 text-slate-300">
                               <td className="py-3 px-4 text-white font-bold">{row.name}</td>
                               <td className="py-3 px-4 text-center font-bold text-emerald-400">{row.salesCount} sales</td>
-                              <td className="py-3 px-4">₦{row.avgBasket.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                              <td className="py-3 px-4 text-right text-white font-bold">₦{row.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                              <td className="py-3 px-4">₦{(row.avgBasket || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                              <td className="py-3 px-4 text-right text-white font-bold">₦{(row.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                             </tr>
                           ))
                         )}
@@ -956,16 +965,16 @@ export default function ReportsDashboard({ branches, role }: Props) {
                     <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block mt-1">Branch ranking</span>
                   </div>
                   <div className="h-64 w-full text-xs font-semibold">
-                    {reportData.comparison.length === 0 ? (
+                    {!reportData.comparison || reportData.comparison.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-xs text-slate-500">No comparative data.</div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={reportData.comparison} margin={{ left: -10, right: 10 }}>
+                        <BarChart data={reportData.comparison || []} margin={{ left: -10, right: 10 }}>
                           <XAxis dataKey="name" stroke="#475569" fontSize={9} tickLine={false} axisLine={false} />
                           <YAxis stroke="#475569" fontSize={9} tickLine={false} axisLine={false} />
                           <Tooltip />
                           <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]}>
-                            {reportData.comparison.map((entry: any, index: number) => (
+                            {(reportData.comparison || []).map((entry: any, index: number) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Bar>

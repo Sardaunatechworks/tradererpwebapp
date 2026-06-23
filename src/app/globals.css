@@ -10,6 +10,19 @@
   --color-foreground: var(--foreground);
   --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Brand Colors (New vibrant TraderERP Blue/Indigo) */
+  --color-blue-50: #EBF0FF;
+  --color-blue-100: #D6E0FF;
+  --color-blue-200: #ADC2FF;
+  --color-blue-300: #85A3FF;
+  --color-blue-400: #5C83FF;
+  --color-blue-500: #3562FF;
+  --color-blue-600: #254EDB;
+  --color-blue-700: #1C3EB1;
+  --color-blue-800: #132D8E;
+  --color-blue-900: #102683;
+  --color-blue-950: #08134F;
 }
 
 body {

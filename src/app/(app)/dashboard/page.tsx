@@ -243,11 +243,15 @@ export default async function DashboardPage() {
         <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
           <div className="space-y-1.5">
             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Today&apos;s Profit</span>
-            <span className="text-2xl font-black text-emerald-500 block">
+            <span className={`text-2xl font-black block ${todayProfit < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
               {currency}{todayProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+          <div className={`w-12 h-12 rounded-xl border flex items-center justify-center ${
+            todayProfit < 0 
+              ? 'bg-rose-600/10 border-rose-500/20 text-rose-500' 
+              : 'bg-emerald-600/10 border-emerald-500/20 text-emerald-500'
+          }`}>
             <Coins className="w-6 h-6" />
           </div>
         </div>

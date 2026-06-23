@@ -13,7 +13,20 @@ export default function BranchGuard({ children }: { children: React.ReactNode })
   useEffect(() => {
     async function checkBranchAssignment() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        let user = null;
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          const { data: { session } } = await supabase.auth.getSession();
+          user = session?.user || null;
+        } else {
+          try {
+            const { data: { user: gotUser } } = await supabase.auth.getUser();
+            user = gotUser;
+          } catch (err) {
+            const { data: { session } } = await supabase.auth.getSession();
+            user = session?.user || null;
+          }
+        }
+
         if (!user) {
           setLoading(false);
           return;
@@ -23,6 +36,12 @@ export default function BranchGuard({ children }: { children: React.ReactNode })
 
         // Owners and Admins and Super Admins don't need branch assignments to access dashboard
         if (role === 'OWNER' || role === 'ADMIN' || role === 'super_admin') {
+          setLoading(false);
+          return;
+        }
+
+        // If offline, bypass the user_branches query which would fail
+        if (typeof window !== 'undefined' && !navigator.onLine) {
           setLoading(false);
           return;
         }

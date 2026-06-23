@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -29,7 +29,38 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  let user = null;
+  let isOffline = false;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    user = data?.user || null;
+    if (error) {
+      const errMsg = error.message?.toLowerCase() || '';
+      if (
+        errMsg.includes('fetch failed') ||
+        errMsg.includes('network error') ||
+        errMsg.includes('timeout') ||
+        errMsg.includes('unreachable') ||
+        error.status === 0 ||
+        error.status === 504 ||
+        error.status === 502 ||
+        error.status === 503
+      ) {
+        isOffline = true;
+      }
+    }
+  } catch (err: any) {
+    const errMsg = err.message?.toLowerCase() || '';
+    if (
+      errMsg.includes('fetch') ||
+      errMsg.includes('network') ||
+      errMsg.includes('dns') ||
+      errMsg.includes('unreachable') ||
+      errMsg.includes('timeout')
+    ) {
+      isOffline = true;
+    }
+  }
 
   const url = request.nextUrl.clone();
   const path = url.pathname;
@@ -48,6 +79,15 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = path === '/login' || path === '/signup' || path === '/';
 
   if (!user) {
+    const hasAuthCookies = request.cookies.getAll().some(
+      cookie => cookie.name.includes('auth-token') || cookie.name.includes('sb-')
+    );
+
+    // If offline and we have auth cookies, assume logged in to prevent redirect to /login
+    if (isOffline && hasAuthCookies) {
+      return response;
+    }
+
     // If not logged in and not on a public route, redirect to login
     if (!isPublicRoute) {
       url.pathname = '/login';

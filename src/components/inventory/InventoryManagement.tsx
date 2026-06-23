@@ -333,9 +333,9 @@ export default function InventoryManagement({ initialProducts, branches, invento
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Selling Price (₦)</label>
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Cost Price (₦)</label>
                       <input
-                        name="defaultPrice"
+                        name="costPrice"
                         type="text"
                         inputMode="decimal"
                         required
@@ -344,9 +344,9 @@ export default function InventoryManagement({ initialProducts, branches, invento
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Cost Price (₦)</label>
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Selling Price (₦)</label>
                       <input
-                        name="costPrice"
+                        name="defaultPrice"
                         type="text"
                         inputMode="decimal"
                         required

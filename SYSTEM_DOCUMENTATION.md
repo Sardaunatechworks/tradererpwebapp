@@ -64,7 +64,7 @@ Every database table is protected by active RLS policies. Data operations (`SELE
 ### Live Session Revocation & Real-Time Validation
 To bypass the standard 1-hour expiration delay of JWT access tokens, all database mutations (Server Actions) execute live profile status queries (`validateWriteAccess` and `validateReadAccess`) directly against the Supabase database. 
 *   If an administrator suspends, restricts, or deletes an employee's account, their write permissions are revoked **instantly**, locking them out on their very next click.
-*   The middleware checks the user status and redirects unauthorized profiles back to the Login view.
+*   The proxy (formerly middleware) checks the user status and redirects unauthorized profiles back to the Login view.
 
 ### POS Sales Transaction Safety
 The `public.process_sale` stored procedure runs as a database transaction. It verifies that:

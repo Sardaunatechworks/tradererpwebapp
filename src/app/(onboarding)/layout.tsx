@@ -1,4 +1,5 @@
 import React from 'react';
+import SessionActivityGuard from '@/components/auth/SessionActivityGuard';
 
 export const metadata = {
   title: 'TraderERP Onboarding',
@@ -12,6 +13,7 @@ export default function OnboardingLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-900">
+      <SessionActivityGuard />
       {children}
     </div>
   );

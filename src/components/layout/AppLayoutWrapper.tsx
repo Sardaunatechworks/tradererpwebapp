@@ -5,6 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import { useUIStore } from '@/stores/uiStore';
 import { usePathname } from 'next/navigation';
 import { Menu, X, ArrowLeft, Sun, Moon } from 'lucide-react';
+import ConnectionIndicator from '@/components/layout/ConnectionIndicator';
 
 export default function AppLayoutWrapper({
   businessName,
@@ -75,6 +76,9 @@ export default function AppLayoutWrapper({
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Offline Engine Connection Indicator */}
+            <ConnectionIndicator />
+
             {/* Header Theme Toggle */}
             <button
               onClick={toggleTheme}

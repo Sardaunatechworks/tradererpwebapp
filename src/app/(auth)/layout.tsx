@@ -10,6 +10,7 @@ import {
   Building2, 
   Shield 
 } from 'lucide-react';
+import Logo from '@/components/layout/Logo';
 
 export const metadata: Metadata = {
   title: 'TraderERP – Enterprise Trading Management System',
@@ -78,14 +79,8 @@ export default function AuthLayout({
         <div className="relative z-10 flex flex-col h-full px-10 py-10">
 
           {/* Brand */}
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl text-white shadow-lg shadow-blue-600/20">
-              T
-            </div>
-            <div>
-              <span className="font-black text-white text-lg tracking-tight leading-none block">TraderERP</span>
-              <span className="text-[9px] text-slate-500 font-bold tracking-widest uppercase block mt-0.5">Enterprise Platform</span>
-            </div>
+          <div className="mb-12">
+            <Logo iconSize="w-10 h-10" textColorMode="dark" subtitle="Enterprise Platform" gap="gap-3" />
           </div>
 
           {/* Hero Text */}

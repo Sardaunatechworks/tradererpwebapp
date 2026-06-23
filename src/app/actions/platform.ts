@@ -294,6 +294,38 @@ export async function createAnnouncement(title: string, content: string, type: '
   return { success: true };
 }
 
+export async function deleteAnnouncement(id: string) {
+  const supabase = await verifySuperAdmin();
+  const { error } = await supabase
+    .from('announcements')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  await createAuditLog(`Deleted announcement ${id}`, 'system_event');
+  revalidatePath('/platform');
+  return { success: true };
+}
+
+export async function updateAnnouncement(id: string, title: string, content: string, type: 'announcement' | 'broadcast' | 'notification') {
+  const supabase = await verifySuperAdmin();
+  const { error } = await supabase
+    .from('announcements')
+    .update({ title, content, type })
+    .eq('id', id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  await createAuditLog(`Updated announcement ${id}`, 'system_event');
+  revalidatePath('/platform');
+  return { success: true };
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    6. EMAIL MANAGEMENT
    ────────────────────────────────────────────────────────────────────────── */
@@ -480,22 +512,82 @@ export async function createAuditLog(action: string, category: 'user_activity' |
    11. ANALYTICS & STATISTICS
    ────────────────────────────────────────────────────────────────────────── */
 export async function getPlatformStats() {
-  const supabase = await verifySuperAdmin();
+  await verifySuperAdmin();
+  const supabaseAdmin = getSupabaseAdmin();
 
-  // Businesses Stats
-  const { data: businesses, error: bizErr } = await supabase
-    .from('businesses')
-    .select('id, status, created_at');
+  // Fetch all businesses, users, and sales across the platform
+  const [
+    { data: businesses, error: bizErr },
+    { data: users, error: usrErr },
+    { data: sales, error: salesErr }
+  ] = await Promise.all([
+    supabaseAdmin.from('businesses').select('id, name, status, created_at'),
+    supabaseAdmin.from('users').select('id, status, created_at'),
+    supabaseAdmin.from('sales').select('id, business_id, total_amount, created_at')
+  ]);
 
-  // Users Stats
-  const { data: users, error: usrErr } = await supabase
-    .from('users')
-    .select('id, status, created_at');
-
-  if (bizErr || usrErr || !businesses || !users) {
-    console.error('Error calculating platform statistics');
-    return { totalBusinesses: 0, activeBusinesses: 0, suspendedBusinesses: 0, totalUsers: 0, activeUsers: 0, suspendedUsers: 0 };
+  if (bizErr || usrErr || salesErr || !businesses || !users || !sales) {
+    console.error('Error calculating platform statistics:', { bizErr, usrErr, salesErr });
+    return {
+      totalBusinesses: 0,
+      activeBusinesses: 0,
+      suspendedBusinesses: 0,
+      totalUsers: 0,
+      activeUsers: 0,
+      suspendedUsers: 0,
+      newBusinessesToday: 0,
+      newUsersToday: 0,
+      totalTransactionsToday: 0,
+      totalVolumeToday: 0,
+      totalTransactionsAllTime: 0,
+      businessActivity: []
+    };
   }
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Group sales by business_id
+  const salesByBusiness: Record<string, { totalTransactions: number; transactionsToday: number; totalVolume: number; volumeToday: number }> = {};
+  
+  businesses.forEach(b => {
+    salesByBusiness[b.id] = {
+      totalTransactions: 0,
+      transactionsToday: 0,
+      totalVolume: 0,
+      volumeToday: 0
+    };
+  });
+
+  let totalTransactionsToday = 0;
+  let totalVolumeToday = 0;
+
+  sales.forEach(s => {
+    const isToday = s.created_at && s.created_at.startsWith(todayStr);
+    const amount = Number(s.total_amount) || 0;
+
+    if (isToday) {
+      totalTransactionsToday += 1;
+      totalVolumeToday += amount;
+    }
+
+    if (salesByBusiness[s.business_id]) {
+      const statsObj = salesByBusiness[s.business_id];
+      statsObj.totalTransactions += 1;
+      statsObj.totalVolume += amount;
+      if (isToday) {
+        statsObj.transactionsToday += 1;
+        statsObj.volumeToday += amount;
+      }
+    }
+  });
+
+  const businessActivity = businesses.map(b => ({
+    id: b.id,
+    name: b.name,
+    status: b.status,
+    created_at: b.created_at,
+    ...salesByBusiness[b.id]
+  }));
 
   const totalBusinesses = businesses.length;
   const activeBusinesses = businesses.filter(b => b.status === 'active').length;
@@ -505,12 +597,23 @@ export async function getPlatformStats() {
   const activeUsers = users.filter(u => u.status === 'active').length;
   const suspendedUsers = users.filter(u => u.status === 'suspended').length;
 
+  const newBusinessesToday = businesses.filter(b => b.created_at && b.created_at.startsWith(todayStr)).length;
+  const newUsersToday = users.filter(u => u.created_at && u.created_at.startsWith(todayStr)).length;
+
+  const totalTransactionsAllTime = sales.length;
+
   return {
     totalBusinesses,
     activeBusinesses,
     suspendedBusinesses,
     totalUsers,
     activeUsers,
-    suspendedUsers
+    suspendedUsers,
+    newBusinessesToday,
+    newUsersToday,
+    totalTransactionsToday,
+    totalVolumeToday,
+    totalTransactionsAllTime,
+    businessActivity
   };
 }

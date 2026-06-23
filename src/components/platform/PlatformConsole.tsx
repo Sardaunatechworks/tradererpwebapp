@@ -11,6 +11,8 @@ import {
   updateTicketStatus,
   createSupportTicket,
   createAnnouncement,
+  deleteAnnouncement,
+  updateAnnouncement,
   sendPlatformEmail,
   createFAQ,
   deleteFAQ,
@@ -37,7 +39,11 @@ import {
   AlertCircle,
   Server,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Download,
+  FileText,
+  Pencil,
+  ShoppingBag
 } from 'lucide-react';
 
 interface Props {
@@ -49,6 +55,12 @@ interface Props {
     totalUsers: number;
     activeUsers: number;
     suspendedUsers: number;
+    newBusinessesToday: number;
+    newUsersToday: number;
+    totalTransactionsToday: number;
+    totalVolumeToday: number;
+    totalTransactionsAllTime: number;
+    businessActivity: any[];
   };
   initialUsers: any[];
   initialPermissions: any[];
@@ -111,6 +123,8 @@ export default function PlatformConsole({
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', template: 'verification' });
   const [faqForm, setFaqForm] = useState({ question: '', answer: '' });
   const [newPermission, setNewPermission] = useState({ role: 'STAFF', permission: '' });
+  const [editingAnnouncement, setEditingAnnouncement] = useState<any | null>(null);
+  const [editAnnouncementForm, setEditAnnouncementForm] = useState({ title: '', content: '', type: 'announcement' });
 
   // Settings states
   const smtpValue = settings.find(s => s.key === 'smtp')?.value || { host: '', port: 587, sender: '' };
@@ -311,6 +325,57 @@ export default function PlatformConsole({
     setLoadingId(null);
   };
 
+  const handleDeleteAnnouncement = async (annId: string) => {
+    if (!confirm('Are you sure you want to delete this announcement?')) return;
+    setLoadingId(annId);
+    clearMessages();
+    const res = await deleteAnnouncement(annId);
+    if (res?.error) {
+      setError(res.error);
+    } else {
+      setAnnouncements(announcements.filter(a => a.id !== annId));
+      setSuccess('Announcement deleted successfully.');
+    }
+    setLoadingId(null);
+  };
+
+  const handleEditClick = (ann: any) => {
+    setEditingAnnouncement(ann);
+    setEditAnnouncementForm({
+      title: ann.title,
+      content: ann.content,
+      type: ann.type
+    });
+  };
+
+  const handleUpdateAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAnnouncement) return;
+    setLoadingId('edit-announcement');
+    clearMessages();
+
+    const res = await updateAnnouncement(
+      editingAnnouncement.id,
+      editAnnouncementForm.title,
+      editAnnouncementForm.content,
+      editAnnouncementForm.type as any
+    );
+
+    if (res?.error) {
+      setError(res.error);
+    } else {
+      setAnnouncements(announcements.map(a => a.id === editingAnnouncement.id ? { 
+        ...a, 
+        title: editAnnouncementForm.title,
+        content: editAnnouncementForm.content,
+        type: editAnnouncementForm.type
+      } : a));
+      setSuccess('Announcement updated successfully.');
+      setEditingAnnouncement(null);
+    }
+    setLoadingId(null);
+  };
+
   const handleSendTestEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingId('email');
@@ -392,6 +457,39 @@ export default function PlatformConsole({
     setLoadingId(null);
   };
 
+  const handleGenerateReport = () => {
+    // Column headers
+    const headers = ['Business ID', 'Company Name', 'Status', 'Date Created', 'Today Transactions', 'Today Sales (NGN)', 'Lifetime Transactions', 'Lifetime Sales (NGN)'];
+    
+    // Rows
+    const rows = (stats.businessActivity || []).map(biz => [
+      biz.id,
+      `"${biz.name.replace(/"/g, '""')}"`,
+      biz.status,
+      new Date(biz.created_at).toISOString(),
+      biz.transactionsToday,
+      biz.volumeToday,
+      biz.totalTransactions,
+      biz.totalVolume
+    ]);
+
+    // Build CSV content
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    
+    // Create Blob and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tradererp-tenant-report-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setSuccess('SaaS Tenant Report successfully generated and downloaded!');
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
       {/* Sidebar Sub-Navigation */}
@@ -417,9 +515,10 @@ export default function PlatformConsole({
 
         {/* ─── TAB: DASHBOARD OVERVIEW ─── */}
         {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center">
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Lifetime Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center shadow-lg">
                 <div>
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total Businesses</span>
                   <span className="text-2xl font-black text-white block mt-1">{stats.totalBusinesses}</span>
@@ -428,7 +527,7 @@ export default function PlatformConsole({
                   <Building2 className="w-5 h-5" />
                 </div>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center shadow-lg">
                 <div>
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Active Accounts</span>
                   <span className="text-2xl font-black text-emerald-500 block mt-1">{stats.activeBusinesses}</span>
@@ -437,7 +536,7 @@ export default function PlatformConsole({
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center shadow-lg">
                 <div>
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total Users</span>
                   <span className="text-2xl font-black text-indigo-500 block mt-1">{stats.totalUsers}</span>
@@ -446,10 +545,59 @@ export default function PlatformConsole({
                   <Users className="w-5 h-5" />
                 </div>
               </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex justify-between items-center shadow-lg">
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total Transactions (All-Time)</span>
+                  <span className="text-2xl font-black text-purple-500 block mt-1">{(stats.totalTransactionsAllTime || 0).toLocaleString()}</span>
+                </div>
+                <div className="w-10 h-10 rounded-lg bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-500">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* Daily Real-Time Activity Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-slate-900 border border-slate-850 rounded-2xl p-5 flex justify-between items-center shadow-md">
+                <div>
+                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">New Businesses Today</span>
+                  <span className="text-xl font-black text-blue-400 block mt-1">{stats.newBusinessesToday}</span>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-blue-600/10 border border-blue-500/10 flex items-center justify-center text-blue-400">
+                  <Building2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="bg-slate-900 border border-slate-850 rounded-2xl p-5 flex justify-between items-center shadow-md">
+                <div>
+                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">New Users Today</span>
+                  <span className="text-xl font-black text-indigo-400 block mt-1">{stats.newUsersToday}</span>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-indigo-600/10 border border-indigo-500/10 flex items-center justify-center text-indigo-400">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="bg-slate-900 border border-slate-850 rounded-2xl p-5 flex justify-between items-center shadow-md">
+                <div>
+                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Today's Transactions</span>
+                  <span className="text-xl font-black text-emerald-400 block mt-1">{stats.totalTransactionsToday}</span>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-emerald-600/10 border border-emerald-500/10 flex items-center justify-center text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="bg-slate-900 border border-slate-850 rounded-2xl p-5 flex justify-between items-center shadow-md">
+                <div>
+                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Today's Sales Volume</span>
+                  <span className="text-xl font-black text-amber-500 block mt-1">₦{(stats.totalVolumeToday || 0).toLocaleString()}</span>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-amber-600/10 border border-amber-500/10 flex items-center justify-center text-amber-400">
+                  <Cpu className="w-4 h-4" />
+                </div>
+              </div>
             </div>
 
             {/* Health & Operations Summary */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
               <h3 className="text-sm font-bold text-white leading-none">System Status Summary</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="border border-slate-800 bg-slate-950/40 p-4 rounded-xl flex items-center gap-4">
@@ -469,32 +617,39 @@ export default function PlatformConsole({
               </div>
             </div>
 
-            {/* Recent Signups */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+            {/* Real-Time Tenant Transaction Monitor */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
               <div className="p-6 border-b border-slate-800">
-                <h3 className="text-sm font-bold text-white leading-none">Recent Tenant Registrations</h3>
+                <h3 className="text-sm font-bold text-white leading-none">Real-Time Tenant Operations Monitor</h3>
+                <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-1.5 block">Monitor transactions, daily sales volumes, and active business status</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-500 font-bold uppercase tracking-wider">
-                      <th className="py-4 px-6">UUID</th>
+                      <th className="py-4 px-6">Business ID</th>
                       <th className="py-4 px-6">Company Name</th>
-                      <th className="py-4 px-6">Created At</th>
                       <th className="py-4 px-6">Status</th>
+                      <th className="py-4 px-6">Today's Tx</th>
+                      <th className="py-4 px-6">Today's Sales</th>
+                      <th className="py-4 px-6">Total Tx (Lft)</th>
+                      <th className="py-4 px-6">Total Sales (Lft)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-950">
-                    {businesses.slice(0, 5).map(biz => (
-                      <tr key={biz.id} className="text-slate-300 hover:bg-slate-950/20">
-                        <td className="py-4 px-6 font-mono text-[10px] text-blue-500">{biz.id}</td>
+                    {(stats.businessActivity || []).map(biz => (
+                      <tr key={biz.id} className="text-slate-300 hover:bg-slate-950/20 transition-colors">
+                        <td className="py-4 px-6 font-mono text-[10px] text-blue-500">#{biz.id.slice(0, 8)}...</td>
                         <td className="py-4 px-6 font-bold text-white">{biz.name}</td>
-                        <td className="py-4 px-6 text-slate-500">{new Date(biz.created_at).toLocaleString()}</td>
                         <td className="py-4 px-6">
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase ${
                             biz.status === 'active' ? 'bg-emerald-950/40 border-emerald-900 text-emerald-400' : 'bg-red-950/40 border-red-900 text-red-400'
                           }`}>{biz.status}</span>
                         </td>
+                        <td className="py-4 px-6 font-bold text-white">{biz.transactionsToday}</td>
+                        <td className="py-4 px-6 font-semibold text-emerald-400">₦{(biz.volumeToday || 0).toLocaleString()}</td>
+                        <td className="py-4 px-6 text-slate-500">{biz.totalTransactions}</td>
+                        <td className="py-4 px-6 text-slate-500 font-semibold">₦{(biz.totalVolume || 0).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -980,7 +1135,24 @@ export default function PlatformConsole({
                   <div key={a.id} className="border border-slate-850 bg-slate-950/40 p-4 rounded-xl space-y-2">
                     <div className="flex justify-between items-start">
                       <h4 className="text-xs font-bold text-white">{a.title}</h4>
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500 uppercase">{a.type}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-500 uppercase">{a.type}</span>
+                        <button
+                          onClick={() => handleEditClick(a)}
+                          className="text-slate-400 hover:text-blue-400 transition-colors p-1 cursor-pointer"
+                          title="Edit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAnnouncement(a.id)}
+                          disabled={loadingId === a.id}
+                          className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+                          title="Delete"
+                        >
+                          {loadingId === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
                     <p className="text-[11px] text-slate-400 leading-relaxed font-medium">{a.content}</p>
                     <span className="text-[9px] text-slate-600 font-bold block mt-1">{new Date(a.created_at).toLocaleString()}</span>
@@ -1301,33 +1473,59 @@ export default function PlatformConsole({
 
         {/* ─── TAB: MONITORING & REPORTS ─── */}
         {activeTab === 'reports' && (
-          <div className="space-y-6 bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <div>
-              <h3 className="text-sm font-bold text-white leading-none">SaaS Growth & Performance</h3>
-              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-1 block">Monthly metrics visualization</span>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border border-slate-850 bg-slate-950/40 p-4 rounded-xl space-y-3">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Registrations By Domain</span>
-                <div className="h-32 flex items-end gap-3 pt-6">
-                  {[4, 8, 12, 18, 22, 28].map((val, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1.5">
-                      <div className="w-full bg-blue-600/40 hover:bg-blue-600 rounded" style={{ height: `${(val / 30) * 100}px` }} />
-                      <span className="text-[9px] text-slate-500 font-bold">M{idx + 1}</span>
-                    </div>
-                  ))}
+          <div className="space-y-6">
+            {/* CSV Export Card */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg animate-in fade-in duration-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white leading-none">Administrative Report Generator</h3>
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-1.5 block">Compile real-time business performance summaries and export as spreadsheet</span>
                 </div>
+                <button
+                  onClick={handleGenerateReport}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-900/10 shrink-0"
+                >
+                  <Download className="w-4 h-4" /> Export CSV Report
+                </button>
               </div>
-              <div className="border border-slate-850 bg-slate-950/40 p-4 rounded-xl space-y-3">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">User Signups Frequency</span>
-                <div className="h-32 flex items-end gap-3 pt-6">
-                  {[12, 24, 18, 32, 45, 60].map((val, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1.5">
-                      <div className="w-full bg-indigo-600/40 hover:bg-indigo-600 rounded" style={{ height: `${(val / 70) * 100}px` }} />
-                      <span className="text-[9px] text-slate-500 font-bold">M{idx + 1}</span>
-                    </div>
-                  ))}
+
+              <div className="border border-slate-850 bg-slate-950/40 p-4 rounded-xl">
+                <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                  The generated report aggregates real-time performance indicators for all active and suspended tenants.
+                  It includes business IDs, registered company names, statuses, creation dates, today's transaction counts,
+                  today's total sales volume in Naira (NGN), and lifetime transaction totals and volumes.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-white leading-none">SaaS Growth & Performance</h3>
+                <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-1 block">Monthly metrics visualization</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border border-slate-850 bg-slate-950/40 p-4 rounded-xl space-y-3">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Registrations By Domain</span>
+                  <div className="h-32 flex items-end gap-3 pt-6">
+                    {[4, 8, 12, 18, 22, 28].map((val, idx) => (
+                      <div key={idx} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div className="w-full bg-blue-600/40 hover:bg-blue-600 rounded" style={{ height: `${(val / 30) * 100}px` }} />
+                        <span className="text-[9px] text-slate-500 font-bold">M{idx + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="border border-slate-850 bg-slate-950/40 p-4 rounded-xl space-y-3">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">User Signups Frequency</span>
+                  <div className="h-32 flex items-end gap-3 pt-6">
+                    {[12, 24, 18, 32, 45, 60].map((val, idx) => (
+                      <div key={idx} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div className="w-full bg-indigo-600/40 hover:bg-indigo-600 rounded" style={{ height: `${(val / 70) * 100}px` }} />
+                        <span className="text-[9px] text-slate-500 font-bold">M{idx + 1}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1407,6 +1605,72 @@ export default function PlatformConsole({
                   <p className="text-[10px] text-slate-500 leading-relaxed font-medium">{plan.desc}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Edit Announcement Modal */}
+        {editingAnnouncement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-6">
+              <div className="text-center space-y-2">
+                <h3 className="text-base font-black text-white">Edit Announcement</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Modify details for the selected announcement.
+                </p>
+              </div>
+              <form onSubmit={handleUpdateAnnouncement} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">Announcement Title</label>
+                    <input
+                      type="text"
+                      value={editAnnouncementForm.title}
+                      onChange={(e) => setEditAnnouncementForm({ ...editAnnouncementForm, title: e.target.value })}
+                      required
+                      className="block w-full border border-slate-850 bg-slate-950 text-white rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">Notification Channel</label>
+                    <select
+                      value={editAnnouncementForm.type}
+                      onChange={(e) => setEditAnnouncementForm({ ...editAnnouncementForm, type: e.target.value as any })}
+                      className="block w-full border border-slate-850 bg-slate-950 text-white rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500"
+                    >
+                      <option value="announcement">Announcements Dashboard Banner</option>
+                      <option value="broadcast">SMTP System Broadcast</option>
+                      <option value="notification">Notification Feed Alert</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">Message Content</label>
+                  <textarea
+                    value={editAnnouncementForm.content}
+                    onChange={(e) => setEditAnnouncementForm({ ...editAnnouncementForm, content: e.target.value })}
+                    rows={4}
+                    required
+                    className="block w-full border border-slate-850 bg-slate-950 text-white rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500 resize-none"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingAnnouncement(null)}
+                    className="flex-1 bg-slate-850 hover:bg-slate-800 text-slate-400 font-bold text-xs uppercase py-3 rounded-lg border border-slate-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loadingId === 'edit-announcement'}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase py-3 rounded-lg shadow-lg flex items-center justify-center gap-2"
+                  >
+                    {loadingId === 'edit-announcement' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

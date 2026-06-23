@@ -6,59 +6,59 @@ import { revalidatePath } from 'next/cache';
 import { validateWriteAccess, validateReadAccess } from '@/lib/security';
 
 export async function createCustomer(formData: FormData) {
-  const name = formData.get('name') as string;
-  const email = formData.get('email') as string;
-  const phone = formData.get('phone') as string;
-  const branchId = formData.get('branchId') as string;
-
-  if (!name) {
-    return { error: 'Customer Name is required.' };
-  }
-
-  // Validate Name length to prevent database field size errors or DoS
-  if (name.length > 255) {
-    return { error: 'Customer Name cannot exceed 255 characters.' };
-  }
-
-  // Email format validation (if specified)
-  const emailTrimmed = email ? email.trim() : '';
-  if (emailTrimmed) {
-    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!EMAIL_REGEX.test(emailTrimmed)) {
-      return { error: 'Invalid email address format.' };
-    }
-    if (emailTrimmed.length > 255) {
-      return { error: 'Email address cannot exceed 255 characters.' };
-    }
-  }
-
-  // Phone number validation (if specified)
-  const phoneTrimmed = phone ? phone.trim() : '';
-  if (phoneTrimmed) {
-    const PHONE_REGEX = /^\+?[0-9\s\-()]{7,20}$/;
-    if (!PHONE_REGEX.test(phoneTrimmed)) {
-      return { error: 'Invalid phone number format. Use 7-20 characters consisting of digits, spaces, hyphens, parentheses, and optional leading +.' };
-    }
-  }
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Authentication required.' };
-  }
-
-  // Live security check to bypass JWT status caching latency
   try {
-    await validateWriteAccess(supabase, user.id);
-  } catch (accessErr: any) {
-    return { error: accessErr.message };
-  }
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const phone = formData.get('phone') as string;
+    const branchId = formData.get('branchId') as string;
 
-  const businessId = user.app_metadata?.business_id;
-  if (!businessId) return { error: 'No business workspace found.' };
+    if (!name) {
+      return { error: 'Customer Name is required.' };
+    }
 
-  try {
+    // Validate Name length to prevent database field size errors or DoS
+    if (name.length > 255) {
+      return { error: 'Customer Name cannot exceed 255 characters.' };
+    }
+
+    // Email format validation (if specified)
+    const emailTrimmed = email ? email.trim() : '';
+    if (emailTrimmed) {
+      const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!EMAIL_REGEX.test(emailTrimmed)) {
+        return { error: 'Invalid email address format.' };
+      }
+      if (emailTrimmed.length > 255) {
+        return { error: 'Email address cannot exceed 255 characters.' };
+      }
+    }
+
+    // Phone number validation (if specified)
+    const phoneTrimmed = phone ? phone.trim() : '';
+    if (phoneTrimmed) {
+      const PHONE_REGEX = /^\+?[0-9\s\-()]{7,20}$/;
+      if (!PHONE_REGEX.test(phoneTrimmed)) {
+        return { error: 'Invalid phone number format. Use 7-20 characters consisting of digits, spaces, hyphens, parentheses, and optional leading +.' };
+      }
+    }
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: 'Authentication required.' };
+    }
+
+    // Live security check to bypass JWT status caching latency
+    try {
+      await validateWriteAccess(supabase, user.id);
+    } catch (accessErr: any) {
+      return { error: accessErr.message };
+    }
+
+    const businessId = user.app_metadata?.business_id;
+    if (!businessId) return { error: 'No business workspace found.' };
+
     const supabaseAdmin = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -94,7 +94,7 @@ export async function createCustomer(formData: FormData) {
     revalidatePath('/customers');
     return { success: true };
   } catch (err: any) {
-    console.error('Create Customer Error:', err);
+    console.error('Create Customer Global Error:', err);
     return { error: err.message || 'An error occurred during customer creation.' };
   }
 }

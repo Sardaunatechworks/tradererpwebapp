@@ -21,9 +21,11 @@ import {
   Sun,
   Moon,
   LifeBuoy,
-  Bell
+  Bell,
+  RefreshCw
 } from 'lucide-react';
 import { getBranches } from '@/app/actions/branches';
+import Logo from '@/components/layout/Logo';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -65,44 +67,78 @@ export default function Sidebar() {
 
   useEffect(() => {
     async function fetchUserContext() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setRole(user.app_metadata?.role || 'STAFF');
-        setName(user.user_metadata?.name || user.email?.split('@')[0] || 'User');
+      try {
+        let user = null;
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          const { data: { session } } = await supabase.auth.getSession();
+          user = session?.user || null;
+        } else {
+          try {
+            const { data: { user: gotUser } } = await supabase.auth.getUser();
+            user = gotUser;
+          } catch (err) {
+            const { data: { session } } = await supabase.auth.getSession();
+            user = session?.user || null;
+          }
+        }
 
-        const { data: profile } = await supabase
-          .from('users')
-          .select('business_id, role')
-          .eq('id', user.id)
-          .maybeSingle();
+        if (user) {
+          setRole(user.app_metadata?.role || 'STAFF');
+          setName(user.user_metadata?.name || user.email?.split('@')[0] || 'User');
 
-        const bizId = user.app_metadata?.business_id || profile?.business_id;
-
-        if (bizId) {
-          // Fetch branches for this business via Server Action
-          const branchData = await getBranches();
-          if (branchData) {
-            setBranches(branchData);
+          // Retrieve cached values from localStorage immediately (resilient if offline)
+          const cachedBranches = localStorage.getItem('tradererp_cached_branches');
+          if (cachedBranches) {
+            setBranches(JSON.parse(cachedBranches));
+          }
+          const cachedStaffBranchId = localStorage.getItem('tradererp_staff_branch_id');
+          if (cachedStaffBranchId) {
+            setStaffBranchId(cachedStaffBranchId);
+            setCurrentBranchId(cachedStaffBranchId);
           }
 
-          // Fetch user branch locks if STAFF or MANAGER
-          const userRole = user.app_metadata?.role || profile?.role || 'STAFF';
-          if (userRole === 'STAFF' || userRole === 'MANAGER') {
-            const { data: userBranchData } = await supabase
-              .from('user_branches')
-              .select('branch_id')
-              .eq('user_id', user.id)
-              .limit(1);
+          // Fetch fresh database context only when online
+          if (typeof window !== 'undefined' && navigator.onLine) {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('business_id, role')
+              .eq('id', user.id)
+              .maybeSingle();
 
-            if (userBranchData && userBranchData.length > 0) {
-              const bId = userBranchData[0].branch_id;
-              setStaffBranchId(bId);
-              setCurrentBranchId(bId);
-            } else {
-              setStaffBranchId(null);
+            const bizId = user.app_metadata?.business_id || profile?.business_id;
+
+            if (bizId) {
+              // Fetch branches for this business via Server Action
+              const branchData = await getBranches();
+              if (branchData) {
+                setBranches(branchData);
+                localStorage.setItem('tradererp_cached_branches', JSON.stringify(branchData));
+              }
+
+              // Fetch user branch locks if STAFF or MANAGER
+              const userRole = user.app_metadata?.role || profile?.role || 'STAFF';
+              if (userRole === 'STAFF' || userRole === 'MANAGER') {
+                const { data: userBranchData } = await supabase
+                  .from('user_branches')
+                  .select('branch_id')
+                  .eq('user_id', user.id)
+                  .limit(1);
+
+                if (userBranchData && userBranchData.length > 0) {
+                  const bId = userBranchData[0].branch_id;
+                  setStaffBranchId(bId);
+                  setCurrentBranchId(bId);
+                  localStorage.setItem('tradererp_staff_branch_id', bId);
+                } else {
+                  setStaffBranchId(null);
+                  localStorage.removeItem('tradererp_staff_branch_id');
+                }
+              }
             }
           }
         }
+      } catch (error) {
+        console.error('Error fetching user context:', error);
       }
     }
 
@@ -111,59 +147,74 @@ export default function Sidebar() {
 
   useEffect(() => {
     async function checkAlerts() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from('users')
-        .select('business_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      const bizId = user.app_metadata?.business_id || profile?.business_id;
-      if (!bizId) return;
-
-      // 1. Check support tickets (time-based check against lastAttendedSupport)
-      const { data: tickets } = await supabase
-        .from('support_tickets')
-        .select('status, admin_response, updated_at')
-        .eq('business_id', bizId);
-
-      const alertTickets = tickets ? tickets.filter(t => t.status === 'open' || (t.status === 'resolved' && t.admin_response)) : [];
-      const newestTicketTime = alertTickets.reduce((max, t) => {
-        const tTime = new Date(t.updated_at).getTime();
-        return tTime > max ? tTime : max;
-      }, 0);
-      setHasSupportAlert(newestTicketTime > lastAttendedSupport);
-
-      // 2. Check low stock items (time-based check against lastAttendedInventory)
-      let query = supabase
-        .from('inventory')
-        .select('quantity, reorder_level, updated_at')
-        .eq('business_id', bizId);
-
-      const activeBranch = staffBranchId || currentBranchId;
-      if (activeBranch && activeBranch !== 'all') {
-        query = query.eq('branch_id', activeBranch);
+      // Skip query alerts check when offline to prevent Supabase connection errors
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        return;
       }
+      try {
+        let user = null;
+        try {
+          const { data: { user: gotUser } } = await supabase.auth.getUser();
+          user = gotUser;
+        } catch (err) {
+          const { data: { session } } = await supabase.auth.getSession();
+          user = session?.user || null;
+        }
+        if (!user) return;
 
-      const { data: inv } = await query;
-      const lowStockItems = inv ? inv.filter(item => item.quantity <= item.reorder_level) : [];
-      const newestLowStockTime = lowStockItems.reduce((max, item) => {
-        const itemTime = new Date(item.updated_at).getTime();
-        return itemTime > max ? itemTime : max;
-      }, 0);
-      setHasLowStock(newestLowStockTime > lastAttendedInventory);
+        const { data: profile } = await supabase
+          .from('users')
+          .select('business_id')
+          .eq('id', user.id)
+          .maybeSingle();
 
-      // 3. Check announcements/notifications (time-based check against lastAttendedNotifications)
-      const { data: ann } = await supabase
-        .from('announcements')
-        .select('created_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
+        const bizId = user.app_metadata?.business_id || profile?.business_id;
+        if (!bizId) return;
 
-      const newestAnnTime = ann && ann.length > 0 ? new Date(ann[0].created_at).getTime() : 0;
-      setHasNotificationsAlert(newestAnnTime > lastAttendedNotifications);
+        // 1. Check support tickets (time-based check against lastAttendedSupport)
+        const { data: tickets } = await supabase
+          .from('support_tickets')
+          .select('status, admin_response, updated_at')
+          .eq('business_id', bizId);
+
+        const alertTickets = tickets ? tickets.filter(t => t.status === 'open' || (t.status === 'resolved' && t.admin_response)) : [];
+        const newestTicketTime = alertTickets.reduce((max, t) => {
+          const tTime = new Date(t.updated_at).getTime();
+          return tTime > max ? tTime : max;
+        }, 0);
+        setHasSupportAlert(newestTicketTime > lastAttendedSupport);
+
+        // 2. Check low stock items (time-based check against lastAttendedInventory)
+        let query = supabase
+          .from('inventory')
+          .select('quantity, reorder_level, updated_at')
+          .eq('business_id', bizId);
+
+        const activeBranch = staffBranchId || currentBranchId;
+        if (activeBranch && activeBranch !== 'all') {
+          query = query.eq('branch_id', activeBranch);
+        }
+
+        const { data: inv } = await query;
+        const lowStockItems = inv ? inv.filter(item => item.quantity <= item.reorder_level) : [];
+        const newestLowStockTime = lowStockItems.reduce((max, item) => {
+          const itemTime = new Date(item.updated_at).getTime();
+          return itemTime > max ? itemTime : max;
+        }, 0);
+        setHasLowStock(newestLowStockTime > lastAttendedInventory);
+
+        // 3. Check announcements/notifications (time-based check against lastAttendedNotifications)
+        const { data: ann } = await supabase
+          .from('announcements')
+          .select('created_at')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const newestAnnTime = ann && ann.length > 0 ? new Date(ann[0].created_at).getTime() : 0;
+        setHasNotificationsAlert(newestAnnTime > lastAttendedNotifications);
+      } catch (error) {
+        console.error('Error checking alerts:', error);
+      }
     }
 
     checkAlerts();
@@ -184,6 +235,7 @@ export default function Sidebar() {
     { name: 'Staff Management', href: '/staff', icon: Shield, roles: ['OWNER', 'ADMIN'] },
     { name: 'Branch Management', href: '/branches', icon: Building2, roles: ['OWNER', 'ADMIN'] },
     { name: 'Support Center', href: '/support', icon: LifeBuoy, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
+    { name: 'Sync Center', href: '/sync-center', icon: RefreshCw, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Notifications', href: '/notifications', icon: Bell, roles: ['OWNER', 'ADMIN', 'MANAGER', 'STAFF'] },
   ];
 
@@ -196,15 +248,7 @@ export default function Sidebar() {
       <div className="flex-1 p-6 space-y-8">
         
         {/* Brand Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-lg shadow-md shadow-blue-500/10">
-            T
-          </div>
-          <div>
-            <h2 className="font-extrabold text-sm text-white tracking-tight leading-none">TraderERP</h2>
-            <span className="text-[9px] text-slate-500 font-semibold tracking-wider uppercase block mt-1">Enterprise Dashboard</span>
-          </div>
-        </div>
+        <Logo iconSize="w-9 h-9" textColorMode="dark" subtitle="Enterprise Dashboard" />
 
         {/* Branch Context Selector */}
         {role !== 'super_admin' && (

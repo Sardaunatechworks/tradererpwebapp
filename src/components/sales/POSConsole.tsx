@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { createSale } from '@/app/actions/sales';
 import { ShoppingCart, Search, Trash2, Loader2, CheckCircle2 } from 'lucide-react';
+import { db, type LocalSale } from '@/lib/offline/db';
 
 interface Props {
   products: any[];
@@ -29,6 +30,67 @@ export default function POSConsole({ products, branches, inventory, branchPrices
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Local state fallbacks for offline support
+  const [localProducts, setLocalProducts] = useState<any[]>(products);
+  const [localInventory, setLocalInventory] = useState<any[]>(inventory);
+  const [localCustomers, setLocalCustomers] = useState<any[]>(customers);
+
+  // Sync cache on load
+  useEffect(() => {
+    const cacheData = async () => {
+      try {
+        if (products.length > 0) {
+          await db.products.clear();
+          await db.products.bulkPut(products.map(p => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            default_price: parseFloat(p.default_price || '0'),
+            business_id: p.business_id
+          })));
+          setLocalProducts(products);
+        } else {
+          const cached = await db.products.toArray();
+          setLocalProducts(cached);
+        }
+
+        if (inventory.length > 0) {
+          await db.inventory.clear();
+          await db.inventory.bulkPut(inventory.map(i => ({
+            product_id: i.product_id,
+            branch_id: i.branch_id,
+            quantity: parseInt(i.quantity || '0'),
+            business_id: i.business_id
+          })));
+          setLocalInventory(inventory);
+        } else {
+          const cached = await db.inventory.toArray();
+          setLocalInventory(cached);
+        }
+
+        if (customers.length > 0) {
+          await db.customers.clear();
+          await db.customers.bulkPut(customers.map(c => ({
+            id: c.id,
+            name: c.name,
+            email: c.email || undefined,
+            phone: c.phone || undefined,
+            branch_id: c.branch_id || 'all',
+            business_id: c.business_id,
+            total_spend: parseFloat(c.total_spend || '0')
+          })));
+          setLocalCustomers(customers);
+        } else {
+          const cached = await db.customers.toArray();
+          setLocalCustomers(cached);
+        }
+      } catch (err) {
+        console.error('POSConsole local cache error:', err);
+      }
+    };
+    cacheData();
+  }, [products, inventory, customers]);
+
   // Sync branch selection from global UI context if specific
   useEffect(() => {
     if (currentBranchId && currentBranchId !== 'all') {
@@ -42,7 +104,7 @@ export default function POSConsole({ products, branches, inventory, branchPrices
 
   // Get stock for product at active branch
   const getProductStock = (pId: string) => {
-    const item = inventory.find(i => i.product_id === pId && i.branch_id === selectedBranchId);
+    const item = localInventory.find(i => i.product_id === pId && i.branch_id === selectedBranchId);
     return item ? item.quantity : 0;
   };
 
@@ -53,7 +115,7 @@ export default function POSConsole({ products, branches, inventory, branchPrices
   };
 
   // Filter products by search text and verify they are stocked (quantity > 0)
-  const searchResults = searchText.trim() === '' ? [] : products.filter(p => {
+  const searchResults = searchText.trim() === '' ? [] : localProducts.filter(p => {
     const stock = getProductStock(p.id);
     const matchesSearch = p.name.toLowerCase().includes(searchText.toLowerCase()) || 
                           p.sku.toLowerCase().includes(searchText.toLowerCase());
@@ -128,6 +190,56 @@ export default function POSConsole({ products, branches, inventory, branchPrices
       product_id: item.product.id,
       quantity: item.quantity
     }));
+
+    // Intercept Offline Mode
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      try {
+        const offlineSaleId = `OFFLINE-${crypto.randomUUID().slice(0, 8)}`;
+        
+        // 1. Deduct local cached inventory quantities
+        for (const item of cart) {
+          await db.inventory
+            .where({ product_id: item.product.id, branch_id: selectedBranchId })
+            .modify(i => {
+              i.quantity = Math.max(0, i.quantity - item.quantity);
+            });
+        }
+
+        // 2. Load the updated cached inventory snapshot
+        const updatedInventory = await db.inventory.toArray();
+        setLocalInventory(updatedInventory);
+
+        // 3. Save sale record locally in Dexie
+        const localSale: LocalSale = {
+          id: offlineSaleId,
+          branch_id: selectedBranchId,
+          customer_id: selectedCustomerId || null,
+          payment_method: paymentMethod,
+          items: itemsParam,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        };
+        await db.pending_sales.add(localSale);
+
+        // 4. Register creation event in sync queue
+        await db.sync_queue.add({
+          type: 'SALE_CREATED',
+          payload: localSale,
+          status: 'queued',
+          created_at: new Date().toISOString()
+        });
+
+        setSuccess(`Offline sale captured! Transaction queued. Invoice ID: #${offlineSaleId}`);
+        setCart([]);
+        setSelectedCustomerId('');
+        setPaymentMethod('cash');
+        setLoading(false);
+      } catch (err: any) {
+        setError(`Failed to save offline sale: ${err.message}`);
+        setLoading(false);
+      }
+      return;
+    }
 
     const res = await createSale(
       selectedBranchId,
@@ -346,7 +458,7 @@ export default function POSConsole({ products, branches, inventory, branchPrices
               className="block w-full border border-slate-800 bg-slate-900 text-white rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="">Walk-in Customer (Guest)</option>
-              {customers.map((c) => (
+              {localCustomers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.phone || 'No phone'})
                 </option>

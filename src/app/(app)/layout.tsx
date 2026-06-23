@@ -1,6 +1,7 @@
 import React from 'react';
 import AppLayoutWrapper from '@/components/layout/AppLayoutWrapper';
 import BranchGuard from '@/components/auth/BranchGuard';
+import SessionActivityGuard from '@/components/auth/SessionActivityGuard';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
@@ -34,6 +35,7 @@ export default async function AppLayout({
 
   return (
     <AppLayoutWrapper businessName={businessName}>
+      <SessionActivityGuard />
       <BranchGuard>
         {children}
       </BranchGuard>

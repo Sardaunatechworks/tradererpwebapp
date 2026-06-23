@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import Logo from '@/components/layout/Logo';
 import { 
   ArrowRight, 
   Package, 
@@ -58,12 +59,7 @@ export default async function LandingPage() {
       {/* Premium Navbar */}
       <header className="border-b border-slate-900/60 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-md shadow-blue-500/20">
-              T
-            </div>
-            <span className="font-extrabold text-sm text-white tracking-tight uppercase">TraderERP</span>
-          </div>
+          <Logo iconSize="w-9 h-9" textColorMode="dark" />
 
           <div className="flex items-center gap-3">
             {isLoggedIn ? (

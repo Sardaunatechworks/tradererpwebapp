@@ -13,7 +13,8 @@ import {
   Calendar,
   ShoppingBag,
   Coins,
-  ArrowUpRight
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 
 interface Props {
@@ -233,12 +234,20 @@ export default function TransactionHistory({ branches, role }: Props) {
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
               <div className="space-y-1.5">
                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total Profit</span>
-                <span className="text-2xl font-black text-emerald-500 block">
+                <span className={`text-2xl font-black block ${totalProfitValue < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                   ₦{totalProfitValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
-                <ArrowUpRight className="w-6 h-6" />
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
+                totalProfitValue < 0 
+                  ? 'bg-rose-600/10 border-rose-500/20 text-rose-500' 
+                  : 'bg-emerald-600/10 border-emerald-500/20 text-emerald-500'
+              }`}>
+                {totalProfitValue < 0 ? (
+                  <ArrowDownRight className="w-6 h-6" />
+                ) : (
+                  <ArrowUpRight className="w-6 h-6" />
+                )}
               </div>
             </div>
 

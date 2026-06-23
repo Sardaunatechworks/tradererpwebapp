@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { signIn, signUp, sendPasswordResetEmail } from '@/app/actions/auth';
 import { Loader2, ArrowRight, ShieldAlert, Check } from 'lucide-react';
 import PasswordInput from '@/components/ui/PasswordInput';
+import Logo from '@/components/layout/Logo';
 
 /* ──────────────────────────────────────────────────────────────────────────
    TAB: SIGN IN
@@ -281,6 +282,7 @@ function AuthContent() {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>('signin');
   const [modalMessage, setModalMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -291,6 +293,10 @@ function AuthContent() {
         errorParam.toLowerCase().includes('deleted'))
     ) {
       setModalMessage(errorParam);
+    }
+    const messageParam = searchParams.get('message');
+    if (messageParam) {
+      setInfoMessage(messageParam);
     }
     // If coming from /signup link
     const tabParam = searchParams.get('tab');
@@ -307,14 +313,8 @@ function AuthContent() {
       <div className="space-y-6 animate-in fade-in zoom-in duration-300">
         {/* Header */}
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-600/20 shrink-0">
-              T
-            </div>
-            <div>
-              <h1 className="text-lg font-black text-white tracking-tight leading-none">TraderERP</h1>
-              <span className="text-[9px] text-slate-500 font-bold tracking-widest uppercase">Workspace Access</span>
-            </div>
+          <div className="mb-4">
+            <Logo iconSize="w-9 h-9" textColorMode="dark" subtitle="Workspace Access" gap="gap-2.5" />
           </div>
           <p className="text-sm text-slate-400 font-medium leading-relaxed">
             {tab === 'signin'
@@ -348,6 +348,13 @@ function AuthContent() {
             >
               Create Account
             </button>
+          </div>
+        )}
+
+        {/* Info/Status Banner */}
+        {infoMessage && (
+          <div className="bg-blue-950/40 border border-blue-800 rounded-xl p-4 text-xs text-blue-400 font-medium animate-in fade-in slide-in-from-top-4 duration-200">
+            {infoMessage}
           </div>
         )}
 
