@@ -26,6 +26,24 @@ export async function proxy(request: NextRequest) {
           );
         },
       },
+      global: {
+        fetch: (url, options) => {
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), 3000); // 3 seconds timeout
+          return fetch(url, {
+            ...options,
+            signal: controller.signal,
+          })
+            .then((res) => {
+              clearTimeout(id);
+              return res;
+            })
+            .catch((err) => {
+              clearTimeout(id);
+              throw err;
+            });
+        },
+      },
     }
   );
 

@@ -5,6 +5,7 @@ const PRECACHE_ASSETS = [
   '/customers',
   '/inventory',
   '/notifications',
+  '/login',
   '/manifest.json',
   '/globe.svg',
   '/next.svg',

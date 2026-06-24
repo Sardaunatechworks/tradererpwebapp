@@ -42,11 +42,13 @@ export default function SessionActivityGuard() {
           window.removeEventListener(event, updateActivity);
         });
 
-        try {
-          // Log out from Supabase
-          await supabase.auth.signOut();
-        } catch (err) {
-          console.error('Error during auto-logout signOut:', err);
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+          try {
+            // Log out from Supabase
+            await supabase.auth.signOut();
+          } catch (err) {
+            console.error('Error during auto-logout signOut:', err);
+          }
         }
 
         // Clear local storage and redirect
