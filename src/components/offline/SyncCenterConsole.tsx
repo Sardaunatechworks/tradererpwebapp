@@ -133,7 +133,8 @@ export default function SyncCenterConsole() {
         // Revert inventory deduction locally
         for (const item of sale.items) {
           await db.inventory
-            .where({ product_id: item.product_id, branch_id: sale.branch_id })
+            .where('[product_id+branch_id]')
+            .equals([item.product_id, sale.branch_id])
             .modify(inv => {
               inv.quantity = inv.quantity + item.quantity;
             });

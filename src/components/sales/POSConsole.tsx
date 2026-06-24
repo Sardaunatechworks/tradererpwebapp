@@ -199,7 +199,8 @@ export default function POSConsole({ products, branches, inventory, branchPrices
         // 1. Deduct local cached inventory quantities
         for (const item of cart) {
           await db.inventory
-            .where({ product_id: item.product.id, branch_id: selectedBranchId })
+            .where('[product_id+branch_id]')
+            .equals([item.product.id, selectedBranchId])
             .modify(i => {
               i.quantity = Math.max(0, i.quantity - item.quantity);
             });
