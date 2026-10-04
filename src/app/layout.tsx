@@ -4,6 +4,11 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'TraderERP — Business Management for Traders',
   description: 'Simple, professional inventory, sales, expenses, and credit tracking.',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

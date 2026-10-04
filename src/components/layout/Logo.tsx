@@ -17,23 +17,23 @@ export function LogoIcon({ className = 'w-9 h-9' }: { className?: string }) {
       viewBox="0 0 120 120"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={`${className} text-blue-500 shrink-0 select-none`}
+      className={`${className} shrink-0 select-none`}
     >
       {/* Speed lines */}
-      <rect x="12" y="42" width="28" height="6" rx="3" fill="currentColor" />
-      <rect x="24" y="57" width="16" height="6" rx="3" fill="currentColor" />
-      <circle cx="13" cy="60" r="3" fill="currentColor" />
-      <rect x="16" y="72" width="24" height="6" rx="3" fill="currentColor" />
+      <rect x="12" y="42" width="28" height="6" rx="3" fill="#3562FF" />
+      <rect x="24" y="57" width="16" height="6" rx="3" fill="#3562FF" />
+      <circle cx="13" cy="60" r="3" fill="#3562FF" />
+      <rect x="16" y="72" width="24" height="6" rx="3" fill="#3562FF" />
       
       {/* Main rounded box */}
-      <rect x="36" y="25" width="70" height="70" rx="20" fill="currentColor" />
+      <rect x="36" y="25" width="70" height="70" rx="20" fill="#3562FF" />
       
       {/* Slanted T */}
       <g transform="translate(13, 15) skewX(-14)">
         {/* Top bar of T */}
-        <rect x="52" y="26" width="34" height="9" rx="1.5" fill="white" />
+        <rect x="52" y="26" width="34" height="9" rx="1.5" fill="#FFFFFF" />
         {/* Stem of T */}
-        <rect x="64.5" y="34" width="10" height="30" rx="1" fill="white" />
+        <rect x="64.5" y="34" width="10" height="30" rx="1" fill="#FFFFFF" />
       </g>
     </svg>
   );

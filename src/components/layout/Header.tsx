@@ -5,17 +5,23 @@ import Link from 'next/link';
 import { PlusCircle, Building2 } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 
+import Logo from '@/components/layout/Logo';
+
 export default function Header({ businessName }: { businessName?: string }) {
   const { setQuickActionOpen } = useUIStore();
 
   return (
-    <header className="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between print:hidden">
+    <header className="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-3 flex items-center justify-between print:hidden">
       {/* Mobile Top Bar Branding */}
-      <div className="flex items-center gap-2 lg:hidden">
-        <div className="w-2 h-2 rounded-full bg-slate-900" />
-        <span className="font-bold text-sm tracking-tight text-slate-900 truncate max-w-[160px]">
-          {businessName || 'TraderERP'}
-        </span>
+      <div className="flex items-center gap-2.5 lg:hidden">
+        <Link href="/dashboard">
+          <Logo iconSize="w-7 h-7" showText={true} />
+        </Link>
+        {businessName && (
+          <span className="hidden sm:inline-block text-xs text-slate-400 font-medium border-l border-slate-200 pl-2 truncate max-w-[130px]">
+            {businessName}
+          </span>
+        )}
       </div>
 
       {/* Desktop Workspace Info */}

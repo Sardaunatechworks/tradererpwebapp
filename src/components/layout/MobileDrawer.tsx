@@ -16,6 +16,8 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/uiStore';
 
+import Logo from '@/components/layout/Logo';
+
 export default function MobileDrawer({ businessName }: { businessName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -52,9 +54,11 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
       <div className="fixed inset-y-0 right-0 w-72 bg-white shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
         <div className="flex items-center justify-between p-4 border-b border-slate-100">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Menu & Modules</h3>
+            <Logo iconSize="w-6 h-6" showText={true} />
             {businessName && (
-              <p className="text-xs text-slate-500 truncate max-w-[180px]">{businessName}</p>
+              <p className="text-[11px] text-slate-500 font-medium truncate max-w-[180px] mt-1 pl-1">
+                {businessName}
+              </p>
             )}
           </div>
           <button
