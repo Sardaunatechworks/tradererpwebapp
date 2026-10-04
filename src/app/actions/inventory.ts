@@ -3,493 +3,524 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
-import { validateWriteAccess } from '@/lib/security';
+import { Product, Category, InventoryMovement } from '@/types';
 
-export async function createProduct(formData: FormData) {
-  const sku = formData.get('sku') as string;
-  const name = formData.get('name') as string;
-  const category = formData.get('category') as string;
-  const description = formData.get('description') as string;
-  const defaultPrice = parseFloat(formData.get('defaultPrice') as string || '0');
-  const costPrice = parseFloat(formData.get('costPrice') as string || '0');
-  const initialStock = parseInt(formData.get('initialStock') as string || '0');
-  const initialBranchId = formData.get('initialBranchId') as string;
+function getAdminClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
-  if (!sku || !name) {
-    return { error: 'SKU and Product Name are required.' };
-  }
-
-  // Pre-validate numeric boundaries (OWASP / Input Validation)
-  if (defaultPrice < 0) {
-    return { error: 'Default Selling Price cannot be negative.' };
-  }
-  if (costPrice < 0) {
-    return { error: 'Cost Price cannot be negative.' };
-  }
-  if (initialStock < 0) {
-    return { error: 'Initial Stock cannot be negative.' };
-  }
-
-  // Length checks to prevent database field size errors or DoS
-  if (sku.length > 100) {
-    return { error: 'SKU cannot exceed 100 characters.' };
-  }
-  if (name.length > 255) {
-    return { error: 'Product Name cannot exceed 255 characters.' };
-  }
-
+async function getAuthContext() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Authentication required.' };
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    throw new Error('Authentication required.');
   }
 
-  // Live security check to bypass JWT status caching latency
-  try {
-    await validateWriteAccess(supabase, user.id);
-  } catch (accessErr: any) {
-    return { error: accessErr.message };
-  }
-
-  const role = user.app_metadata?.role;
   const businessId = user.app_metadata?.business_id;
-
   if (!businessId) {
-    return { error: 'No business workspace found.' };
+    throw new Error('No business workspace context found.');
   }
 
-  if (role !== 'OWNER' && role !== 'ADMIN' && role !== 'MANAGER') {
-    return { error: 'Not authorized to create products.' };
-  }
+  const role = user.app_metadata?.role || 'staff';
+  return { user, businessId, role, supabase };
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CATEGORIES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getCategories(): Promise<{ data?: Category[]; error?: string }> {
   try {
-    const supabaseAdmin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const { businessId, supabase } = await getAuthContext();
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('business_id', businessId)
+      .order('name', { ascending: true });
 
-    // SECURITY CHECK: Verify initial branch belongs to user's business
-    if (initialBranchId) {
-      const { data: branchCheck } = await supabaseAdmin
-        .from('branches')
+    if (error) throw error;
+    return { data: (data as Category[]) || [] };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to fetch categories.' };
+  }
+}
+
+export async function createCategory(formData: FormData): Promise<{ data?: Category; error?: string }> {
+  try {
+    const { businessId, user, role } = await getAuthContext();
+    if (role === 'staff') {
+      return { error: 'Only owners and admins can create product categories.' };
+    }
+
+    const name = (formData.get('name') as string)?.trim();
+    const description = (formData.get('description') as string)?.trim() || null;
+
+    if (!name) return { error: 'Category name is required.' };
+
+    const supabaseAdmin = getAdminClient();
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .insert({
+        business_id: businessId,
+        name,
+        description,
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    revalidatePath('/inventory');
+    return { data: data as Category };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to create category.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRODUCTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getProducts(options?: {
+  search?: string;
+  categoryId?: string;
+  status?: 'active' | 'archived' | 'all';
+}): Promise<{ data?: Product[]; error?: string }> {
+  try {
+    const { businessId, supabase } = await getAuthContext();
+
+    let query = supabase
+      .from('products')
+      .select('*, category:categories(id, name)')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false });
+
+    const statusFilter = options?.status || 'active';
+    if (statusFilter !== 'all') {
+      query = query.eq('status', statusFilter);
+    }
+
+    if (options?.categoryId && options.categoryId !== 'all') {
+      query = query.eq('category_id', options.categoryId);
+    }
+
+    if (options?.search?.trim()) {
+      const s = options.search.trim();
+      query = query.or(`name.ilike.%${s}%,sku.ilike.%${s}%,barcode.ilike.%${s}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return { data: (data as Product[]) || [] };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to fetch products.' };
+  }
+}
+
+export async function getProductById(id: string): Promise<{ data?: Product; error?: string }> {
+  try {
+    const { businessId, supabase } = await getAuthContext();
+    const { data, error } = await supabase
+      .from('products')
+      .select('*, category:categories(id, name)')
+      .eq('id', id)
+      .eq('business_id', businessId)
+      .single();
+
+    if (error) throw error;
+    return { data: data as Product };
+  } catch (err: any) {
+    return { error: err.message || 'Product not found.' };
+  }
+}
+
+export async function createProduct(formData: FormData): Promise<{ data?: Product; error?: string }> {
+  try {
+    const { businessId, user, role } = await getAuthContext();
+    if (role === 'staff') {
+      return { error: 'Staff members are not authorized to create products.' };
+    }
+
+    const name = (formData.get('name') as string)?.trim();
+    const sku = (formData.get('sku') as string)?.trim() || null;
+    const barcode = (formData.get('barcode') as string)?.trim() || null;
+    const categoryId = (formData.get('categoryId') as string)?.trim() || null;
+    const description = (formData.get('description') as string)?.trim() || null;
+    const unit = (formData.get('unit') as string)?.trim() || 'pcs';
+
+    const purchasePrice = parseFloat((formData.get('purchasePrice') as string) || '0');
+    const sellingPrice = parseFloat((formData.get('sellingPrice') as string) || '0');
+    const initialStock = parseInt((formData.get('initialStock') as string) || '0', 10);
+    const minimumStock = parseInt((formData.get('minimumStock') as string) || '0', 10);
+
+    if (!name) {
+      return { error: 'Product name is required.' };
+    }
+    if (purchasePrice < 0 || sellingPrice < 0) {
+      return { error: 'Prices cannot be negative.' };
+    }
+    if (initialStock < 0 || minimumStock < 0) {
+      return { error: 'Stock quantities cannot be negative.' };
+    }
+
+    const supabaseAdmin = getAdminClient();
+
+    // Check SKU uniqueness within this business if provided
+    if (sku) {
+      const { data: existingSku } = await supabaseAdmin
+        .from('products')
         .select('id')
-        .eq('id', initialBranchId)
         .eq('business_id', businessId)
+        .eq('sku', sku)
         .maybeSingle();
 
-      if (!branchCheck) {
-        return { error: 'Initial branch context not found or unauthorized.' };
+      if (existingSku) {
+        return { error: `A product with SKU "${sku}" already exists in your catalog.` };
       }
     }
 
-    // Create the product (using admin client to bypass RLS sync latency)
+    // Insert Product
     const { data: product, error: prodErr } = await supabaseAdmin
       .from('products')
       .insert({
         business_id: businessId,
-        sku,
+        category_id: categoryId,
         name,
-        category: category || '',
-        description: description || '',
-        default_price: defaultPrice,
-        cost_price: costPrice,
+        sku,
+        barcode,
+        description,
+        unit,
+        purchase_price: purchasePrice,
+        selling_price: sellingPrice,
+        current_stock: initialStock,
+        minimum_stock: minimumStock,
+        status: 'active',
       })
-      .select('id')
+      .select('*')
       .single();
 
     if (prodErr || !product) {
-      return { error: prodErr?.message || 'Failed to create product.' };
+      throw new Error(prodErr?.message || 'Failed to save product.');
     }
 
-    // Automatically initialize inventory for all branches of this business
-    const { data: branches } = await supabaseAdmin
-      .from('branches')
-      .select('id')
-      .eq('business_id', businessId);
-
-    if (branches && branches.length > 0) {
-      const targetBranchId = initialBranchId || branches[0].id;
-
-      const inventoryInserts = branches.map((b) => ({
+    // If initial stock > 0, record opening stock movement
+    if (initialStock > 0) {
+      await supabaseAdmin.from('inventory_movements').insert({
         business_id: businessId,
-        branch_id: b.id,
         product_id: product.id,
-        quantity: b.id === targetBranchId ? initialStock : 0,
-        reorder_level: 10,
-      }));
-
-      const { error: invErr } = await supabaseAdmin
-        .from('inventory')
-        .insert(inventoryInserts);
-
-      if (invErr) {
-        console.error('Failed to initialize inventory for product:', invErr);
-      }
-
-      // Log stock movement if initial stock is positive
-      if (initialStock > 0 && targetBranchId) {
-        const { error: moveErr } = await supabaseAdmin
-          .from('stock_movements')
-          .insert({
-            business_id: businessId,
-            branch_id: targetBranchId,
-            product_id: product.id,
-            quantity: initialStock,
-            type: 'restock',
-            recorded_by: user.id,
-            notes: 'Initial stock allocation during product creation'
-          });
-        
-        if (moveErr) {
-          console.error('Failed to log initial stock movement:', moveErr);
-        }
-      }
-    }
-
-    revalidatePath('/inventory');
-    return { success: true };
-  } catch (err: any) {
-    console.error('Product Creation Error:', err);
-    return { error: err.message || 'An error occurred while creating product.' };
-  }
-}
-
-export async function restockInventory(
-  branchId: string,
-  productId: string,
-  quantity: number,
-  notes: string
-) {
-  if (quantity <= 0) {
-    return { error: 'Restock quantity must be positive.' };
-  }
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Authentication required.' };
-  }
-
-  // Live security check to bypass JWT status caching latency
-  try {
-    await validateWriteAccess(supabase, user.id);
-  } catch (accessErr: any) {
-    return { error: accessErr.message };
-  }
-
-  const role = user.app_metadata?.role;
-  const businessId = user.app_metadata?.business_id;
-
-  if (!businessId) {
-    return { error: 'No business workspace found.' };
-  }
-
-  if (role !== 'OWNER' && role !== 'ADMIN' && role !== 'MANAGER') {
-    return { error: 'Not authorized to manage stock.' };
-  }
-
-  try {
-    const supabaseAdmin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // SECURITY CHECK: Verify branch belongs to user's business
-    const { data: branchCheck } = await supabaseAdmin
-      .from('branches')
-      .select('id')
-      .eq('id', branchId)
-      .eq('business_id', businessId)
-      .maybeSingle();
-
-    if (!branchCheck) {
-      return { error: 'Branch context not found or unauthorized.' };
-    }
-
-    // SECURITY CHECK: Verify product belongs to user's business
-    const { data: productCheck } = await supabaseAdmin
-      .from('products')
-      .select('id')
-      .eq('id', productId)
-      .eq('business_id', businessId)
-      .maybeSingle();
-
-    if (!productCheck) {
-      return { error: 'Product catalog context not found or unauthorized.' };
-    }
-
-    // Get current quantity (using admin client to bypass RLS)
-    const { data: currentInv } = await supabaseAdmin
-      .from('inventory')
-      .select('quantity')
-      .eq('branch_id', branchId)
-      .eq('product_id', productId)
-      .maybeSingle();
-
-    const currentQty = currentInv ? currentInv.quantity : 0;
-    const newQty = currentQty + quantity;
-
-    // Insert or update inventory (using admin client to bypass RLS)
-    const { error: invErr } = await supabaseAdmin
-      .from('inventory')
-      .upsert({
-        business_id: businessId,
-        branch_id: branchId,
-        product_id: productId,
-        quantity: newQty,
+        movement_type: 'opening_stock',
+        quantity: initialStock,
+        notes: 'Initial opening stock',
+        created_by: user.id,
       });
-
-    if (invErr) {
-      return { error: invErr.message };
     }
 
-    // Insert stock movement record
-    const { error: moveErr } = await supabaseAdmin
-      .from('stock_movements')
-      .insert({
-        business_id: businessId,
-        branch_id: branchId,
-        product_id: productId,
-        quantity,
-        type: 'restock',
-        recorded_by: user.id,
-        notes: notes || 'Restock action',
-      });
-
-    if (moveErr) {
-      console.error('Failed to log stock movement:', moveErr);
-    }
-
-    // Trigger metrics recomputation (cached analytics)
-    const { error: rpcErr } = await supabaseAdmin.rpc('recompute_daily_metrics', {
-      p_business_id: businessId,
-      p_date: new Date().toISOString().split('T')[0]
+    // Audit log
+    await supabaseAdmin.from('audit_logs').insert({
+      business_id: businessId,
+      user_id: user.id,
+      action: 'create_product',
+      entity_type: 'product',
+      entity_id: product.id,
+      details: { name, sku, initialStock, sellingPrice },
     });
 
-    if (rpcErr) {
-      console.error('Failed to trigger daily metrics recomputation:', rpcErr);
-    }
-
     revalidatePath('/inventory');
-    return { success: true };
+    revalidatePath('/dashboard');
+    return { data: product as Product };
   } catch (err: any) {
-    console.error('Restock Inventory Error:', err);
-    return { error: err.message || 'An error occurred during restocking.' };
+    return { error: err.message || 'Failed to create product.' };
   }
 }
 
-export async function adjustInventory(
-  branchId: string,
-  productId: string,
-  targetQuantity: number,
-  notes: string
-) {
-  if (targetQuantity < 0) {
-    return { error: 'Inventory quantity cannot be negative.' };
-  }
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Authentication required.' };
-  }
-
-  // Live security check to bypass JWT status caching latency
+export async function updateProduct(
+  id: string,
+  formData: FormData
+): Promise<{ data?: Product; error?: string }> {
   try {
-    await validateWriteAccess(supabase, user.id);
-  } catch (accessErr: any) {
-    return { error: accessErr.message };
-  }
-
-  const role = user.app_metadata?.role;
-  const businessId = user.app_metadata?.business_id;
-
-  if (!businessId) {
-    return { error: 'No business workspace found.' };
-  }
-
-  if (role !== 'OWNER' && role !== 'ADMIN' && role !== 'MANAGER') {
-    return { error: 'Not authorized to manage stock.' };
-  }
-
-  try {
-    const supabaseAdmin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // SECURITY CHECK: Verify branch belongs to user's business
-    const { data: branchCheck } = await supabaseAdmin
-      .from('branches')
-      .select('id')
-      .eq('id', branchId)
-      .eq('business_id', businessId)
-      .maybeSingle();
-
-    if (!branchCheck) {
-      return { error: 'Branch context not found or unauthorized.' };
+    const { businessId, user, role } = await getAuthContext();
+    if (role === 'staff') {
+      return { error: 'Staff members are not authorized to update products.' };
     }
 
-    // SECURITY CHECK: Verify product belongs to user's business
-    const { data: productCheck } = await supabaseAdmin
+    const name = (formData.get('name') as string)?.trim();
+    const sku = (formData.get('sku') as string)?.trim() || null;
+    const barcode = (formData.get('barcode') as string)?.trim() || null;
+    const categoryId = (formData.get('categoryId') as string)?.trim() || null;
+    const description = (formData.get('description') as string)?.trim() || null;
+    const unit = (formData.get('unit') as string)?.trim() || 'pcs';
+
+    const purchasePrice = parseFloat((formData.get('purchasePrice') as string) || '0');
+    const sellingPrice = parseFloat((formData.get('sellingPrice') as string) || '0');
+    const minimumStock = parseInt((formData.get('minimumStock') as string) || '0', 10);
+
+    if (!name) return { error: 'Product name is required.' };
+    if (purchasePrice < 0 || sellingPrice < 0) return { error: 'Prices cannot be negative.' };
+    if (minimumStock < 0) return { error: 'Minimum stock cannot be negative.' };
+
+    const supabaseAdmin = getAdminClient();
+
+    // Verify SKU collision
+    if (sku) {
+      const { data: existingSku } = await supabaseAdmin
+        .from('products')
+        .select('id')
+        .eq('business_id', businessId)
+        .eq('sku', sku)
+        .neq('id', id)
+        .maybeSingle();
+
+      if (existingSku) {
+        return { error: `Another product already uses the SKU "${sku}".` };
+      }
+    }
+
+    const { data: product, error: updateErr } = await supabaseAdmin
       .from('products')
-      .select('id')
-      .eq('id', productId)
+      .update({
+        name,
+        sku,
+        barcode,
+        category_id: categoryId,
+        description,
+        unit,
+        purchase_price: purchasePrice,
+        selling_price: sellingPrice,
+        minimum_stock: minimumStock,
+      })
+      .eq('id', id)
       .eq('business_id', businessId)
-      .maybeSingle();
+      .select('*')
+      .single();
 
-    if (!productCheck) {
-      return { error: 'Product catalog context not found or unauthorized.' };
-    }
+    if (updateErr) throw updateErr;
 
-    // Get current quantity (using admin client to bypass RLS)
-    const { data: currentInv } = await supabaseAdmin
-      .from('inventory')
-      .select('quantity')
-      .eq('branch_id', branchId)
-      .eq('product_id', productId)
-      .maybeSingle();
-
-    const currentQty = currentInv ? currentInv.quantity : 0;
-    const diff = targetQuantity - currentQty;
-
-    if (diff === 0) {
-      return { success: true }; // No changes needed
-    }
-
-    // Update inventory quantity
-    const { error: invErr } = await supabaseAdmin
-      .from('inventory')
-      .upsert({
-        business_id: businessId,
-        branch_id: branchId,
-        product_id: productId,
-        quantity: targetQuantity,
-      });
-
-    if (invErr) {
-      return { error: invErr.message };
-    }
-
-    // Insert stock movement record
-    const { error: moveErr } = await supabaseAdmin
-      .from('stock_movements')
-      .insert({
-        business_id: businessId,
-        branch_id: branchId,
-        product_id: productId,
-        quantity: diff,
-        type: 'adjustment',
-        recorded_by: user.id,
-        notes: notes || 'Stock adjustment',
-      });
-
-    if (moveErr) {
-      console.error('Failed to log adjustment movement:', moveErr);
-    }
-
-    // Trigger metrics recomputation (cached analytics)
-    const { error: rpcErr } = await supabaseAdmin.rpc('recompute_daily_metrics', {
-      p_business_id: businessId,
-      p_date: new Date().toISOString().split('T')[0]
+    await supabaseAdmin.from('audit_logs').insert({
+      business_id: businessId,
+      user_id: user.id,
+      action: 'update_product',
+      entity_type: 'product',
+      entity_id: id,
+      details: { name, sku, purchasePrice, sellingPrice },
     });
 
-    if (rpcErr) {
-      console.error('Failed to trigger daily metrics recomputation:', rpcErr);
-    }
-
     revalidatePath('/inventory');
-    return { success: true };
+    revalidatePath(`/inventory/${id}`);
+    return { data: product as Product };
   } catch (err: any) {
-    console.error('Adjust Inventory Error:', err);
-    return { error: err.message || 'An error occurred during adjustment.' };
+    return { error: err.message || 'Failed to update product.' };
   }
 }
 
-export async function updateBranchPrice(
-  branchId: string,
-  productId: string,
-  price: number
-) {
-  if (price < 0) {
-    return { error: 'Price cannot be negative.' };
-  }
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Authentication required.' };
-  }
-
-  // Live security check to bypass JWT status caching latency
+export async function toggleArchiveProduct(id: string): Promise<{ success?: boolean; error?: string }> {
   try {
-    await validateWriteAccess(supabase, user.id);
-  } catch (accessErr: any) {
-    return { error: accessErr.message };
-  }
-
-  const role = user.app_metadata?.role;
-  const businessId = user.app_metadata?.business_id;
-
-  if (!businessId) {
-    return { error: 'No business workspace found.' };
-  }
-
-  if (role !== 'OWNER' && role !== 'ADMIN' && role !== 'MANAGER') {
-    return { error: 'Not authorized to override pricing.' };
-  }
-
-  try {
-    const supabaseAdmin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // SECURITY CHECK: Verify branch belongs to user's business
-    const { data: branchCheck } = await supabaseAdmin
-      .from('branches')
-      .select('id')
-      .eq('id', branchId)
-      .eq('business_id', businessId)
-      .maybeSingle();
-
-    if (!branchCheck) {
-      return { error: 'Branch context not found or unauthorized.' };
+    const { businessId, user, role } = await getAuthContext();
+    if (role === 'staff') {
+      return { error: 'Staff members cannot archive products.' };
     }
 
-    // SECURITY CHECK: Verify product belongs to user's business
-    const { data: productCheck } = await supabaseAdmin
+    const supabaseAdmin = getAdminClient();
+    const { data: current } = await supabaseAdmin
       .from('products')
-      .select('id')
-      .eq('id', productId)
+      .select('status, name')
+      .eq('id', id)
       .eq('business_id', businessId)
-      .maybeSingle();
+      .single();
 
-    if (!productCheck) {
-      return { error: 'Product catalog context not found or unauthorized.' };
-    }
+    if (!current) return { error: 'Product not found.' };
+
+    const nextStatus = current.status === 'active' ? 'archived' : 'active';
 
     const { error } = await supabaseAdmin
-      .from('branch_product_prices')
-      .upsert({
-        business_id: businessId,
-        branch_id: branchId,
-        product_id: productId,
-        price,
-      });
+      .from('products')
+      .update({ status: nextStatus })
+      .eq('id', id)
+      .eq('business_id', businessId);
 
-    if (error) {
-      return { error: error.message };
-    }
+    if (error) throw error;
+
+    await supabaseAdmin.from('audit_logs').insert({
+      business_id: businessId,
+      user_id: user.id,
+      action: nextStatus === 'archived' ? 'archive_product' : 'restore_product',
+      entity_type: 'product',
+      entity_id: id,
+      details: { name: current.name, status: nextStatus },
+    });
 
     revalidatePath('/inventory');
     return { success: true };
   } catch (err: any) {
-    console.error('Override Price Error:', err);
-    return { error: err.message || 'An error occurred while overriding price.' };
+    return { error: err.message || 'Failed to update product status.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STOCK OPERATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function addStock(
+  productId: string,
+  quantity: number,
+  costPrice?: number,
+  notes?: string
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { businessId, user } = await getAuthContext();
+    if (quantity <= 0) {
+      return { error: 'Stock addition quantity must be greater than zero.' };
+    }
+
+    const supabaseAdmin = getAdminClient();
+
+    // Fetch existing product
+    const { data: product, error: fetchErr } = await supabaseAdmin
+      .from('products')
+      .select('current_stock, purchase_price, name')
+      .eq('id', productId)
+      .eq('business_id', businessId)
+      .single();
+
+    if (fetchErr || !product) {
+      return { error: 'Product not found.' };
+    }
+
+    const newStock = product.current_stock + quantity;
+    const updates: Record<string, any> = { current_stock: newStock };
+    if (costPrice !== undefined && costPrice >= 0) {
+      updates.purchase_price = costPrice;
+    }
+
+    // Update product stock
+    const { error: updateErr } = await supabaseAdmin
+      .from('products')
+      .update(updates)
+      .eq('id', productId)
+      .eq('business_id', businessId);
+
+    if (updateErr) throw updateErr;
+
+    // Record movement
+    await supabaseAdmin.from('inventory_movements').insert({
+      business_id: businessId,
+      product_id: productId,
+      movement_type: 'stock_addition',
+      quantity: quantity,
+      notes: notes || 'Stock-in addition',
+      created_by: user.id,
+    });
+
+    // Audit log
+    await supabaseAdmin.from('audit_logs').insert({
+      business_id: businessId,
+      user_id: user.id,
+      action: 'add_stock',
+      entity_type: 'product',
+      entity_id: productId,
+      details: { added: quantity, previousStock: product.current_stock, newStock },
+    });
+
+    revalidatePath('/inventory');
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to add stock.' };
+  }
+}
+
+export async function adjustStock(
+  productId: string,
+  newStock: number,
+  reason: string
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { businessId, user, role } = await getAuthContext();
+    if (role === 'staff') {
+      return { error: 'Only owners and admins can perform manual stock adjustments.' };
+    }
+
+    if (newStock < 0) {
+      return { error: 'Adjusted stock cannot be negative.' };
+    }
+    if (!reason?.trim()) {
+      return { error: 'A reason for manual adjustment is required.' };
+    }
+
+    const supabaseAdmin = getAdminClient();
+
+    const { data: product, error: fetchErr } = await supabaseAdmin
+      .from('products')
+      .select('current_stock, name')
+      .eq('id', productId)
+      .eq('business_id', businessId)
+      .single();
+
+    if (fetchErr || !product) {
+      return { error: 'Product not found.' };
+    }
+
+    const difference = newStock - product.current_stock;
+    if (difference === 0) {
+      return { error: 'The new stock quantity is the same as current stock.' };
+    }
+
+    // Update stock
+    const { error: updateErr } = await supabaseAdmin
+      .from('products')
+      .update({ current_stock: newStock })
+      .eq('id', productId)
+      .eq('business_id', businessId);
+
+    if (updateErr) throw updateErr;
+
+    // Movement record
+    await supabaseAdmin.from('inventory_movements').insert({
+      business_id: businessId,
+      product_id: productId,
+      movement_type: 'manual_adjustment',
+      quantity: difference,
+      notes: `Adjustment: ${reason.trim()} (from ${product.current_stock} to ${newStock})`,
+      created_by: user.id,
+    });
+
+    // Audit log
+    await supabaseAdmin.from('audit_logs').insert({
+      business_id: businessId,
+      user_id: user.id,
+      action: 'adjust_stock',
+      entity_type: 'product',
+      entity_id: productId,
+      details: { before: product.current_stock, after: newStock, difference, reason },
+    });
+
+    revalidatePath('/inventory');
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to adjust stock.' };
+  }
+}
+
+export async function getProductMovements(
+  productId: string
+): Promise<{ data?: InventoryMovement[]; error?: string }> {
+  try {
+    const { businessId, supabase } = await getAuthContext();
+
+    const { data, error } = await supabase
+      .from('inventory_movements')
+      .select('*')
+      .eq('product_id', productId)
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { data: (data as InventoryMovement[]) || [] };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to fetch inventory movements.' };
   }
 }

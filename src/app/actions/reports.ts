@@ -1,408 +1,261 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateReadAccess } from '@/lib/security';
 
-export async function getReportsData(
-  type: 'revenue' | 'sales' | 'inventory' | 'debt' | 'branch',
-  startDate: string,
-  endDate: string,
-  branchId: string
-) {
-  // 1. Get authenticated user
+async function getAuthContext() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: 'Authentication required.' };
-  }
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) throw new Error('Authentication required.');
 
-  // Live security check for read access
-  try {
-    await validateReadAccess(supabase, user.id);
-  } catch (accessErr: any) {
-    return { error: accessErr.message };
-  }
-
-  const role = user.app_metadata?.role || 'STAFF';
   const businessId = user.app_metadata?.business_id;
-  if (!businessId) {
-    return { error: 'No business workspace found.' };
+  if (!businessId) throw new Error('No business workspace context found.');
+
+  return { user, businessId, supabase };
+}
+
+function getRangeDates(range: string): { start: string; end: string } {
+  const now = new Date();
+  const end = now.toISOString();
+
+  let start: Date;
+  if (range === 'today') {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (range === 'yesterday') {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  } else if (range === 'week') {
+    start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  } else if (range === 'month') {
+    start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  } else {
+    // all time
+    start = new Date(2020, 0, 1);
   }
 
-  // Server-side enforcement of branch scoping for MANAGER and STAFF roles
-  let activeBranchId = branchId;
-  if (role === 'MANAGER' || role === 'STAFF') {
-    const { data: userBranchData } = await supabase
-      .from('user_branches')
-      .select('branch_id')
-      .eq('user_id', user.id)
-      .limit(1);
+  return { start: start.toISOString(), end };
+}
 
-    if (!userBranchData || userBranchData.length === 0) {
-      return { error: 'You are not assigned to any branch.' };
-    }
-    activeBranchId = userBranchData[0].branch_id;
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. SALES REPORT
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // SECURITY CHECK: Verify target branch belongs to user's business
-  if (activeBranchId !== 'all') {
-    const { data: branchCheck } = await supabase
-      .from('branches')
-      .select('id')
-      .eq('id', activeBranchId)
-      .eq('business_id', businessId)
-      .maybeSingle();
-
-    if (!branchCheck) {
-      return { error: 'Branch context not found or unauthorized.' };
-    }
-  }
-
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
+export async function getSalesReport(range: string = 'month') {
   try {
-    if (type === 'revenue') {
-      let salesQuery = supabaseAdmin
-        .from('sales')
-        .select('total_amount, payment_method, created_at')
-        .eq('business_id', businessId)
-        .gte('created_at', `${startDate}T00:00:00Z`)
-        .lte('created_at', `${endDate}T23:59:59Z`);
+    const { businessId, supabase } = await getAuthContext();
+    const { start, end } = getRangeDates(range);
 
-      if (activeBranchId !== 'all') {
-        salesQuery = salesQuery.eq('branch_id', activeBranchId);
-      }
+    const { data: sales, error } = await supabase
+      .from('sales')
+      .select('*, customer:customers(name)')
+      .eq('business_id', businessId)
+      .eq('status', 'completed')
+      .gte('created_at', start)
+      .lte('created_at', end)
+      .order('created_at', { ascending: false });
 
-      const { data: sales, error } = await salesQuery;
-      if (error) throw new Error(error.message);
+    if (error) throw error;
 
-      let totalRevenue = 0;
-      const paymentMethods = { cash: 0, card: 0, bank_transfer: 0, store_credit: 0 };
-      const dailyMap = new Map<string, number>();
+    const list = sales || [];
+    const totalSales = list.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
+    const totalPaid = list.reduce((acc, s) => acc + (Number(s.amount_paid) || 0), 0);
+    const totalCredit = list.reduce((acc, s) => acc + (Number(s.balance_due) || 0), 0);
+    const count = list.length;
+    const averageOrderValue = count > 0 ? totalSales / count : 0;
 
-      sales?.forEach((s) => {
-        const amt = parseFloat(s.total_amount || '0');
-        totalRevenue += amt;
+    const paidCount = list.filter((s) => s.payment_status === 'paid').length;
+    const partialCount = list.filter((s) => s.payment_status === 'partial').length;
+    const creditCount = list.filter((s) => s.payment_status === 'credit').length;
 
-        // Payment method breakdown
-        const pm = s.payment_method as keyof typeof paymentMethods;
-        if (pm in paymentMethods) {
-          paymentMethods[pm] += amt;
-        }
-
-        // Daily trend
-        const dayStr = s.created_at.split('T')[0];
-        dailyMap.set(dayStr, (dailyMap.get(dayStr) || 0) + amt);
-      });
-
-      // Calculate realized profit inside date range
-      let profitQuery = supabaseAdmin
-        .from('sale_items')
-        .select('quantity, total_price, products(cost_price), sales!inner(created_at, branch_id)')
-        .eq('business_id', businessId)
-        .gte('sales.created_at', `${startDate}T00:00:00Z`)
-        .lte('sales.created_at', `${endDate}T23:59:59Z`);
-
-      if (activeBranchId !== 'all') {
-        profitQuery = profitQuery.eq('sales.branch_id', activeBranchId);
-      }
-
-      const { data: profitItems } = await profitQuery;
-
-      let totalProfit = 0;
-      const dailyProfitMap = new Map<string, number>();
-
-      profitItems?.forEach((item: any) => {
-        const price = parseFloat(item.total_price || '0');
-        const qty = item.quantity || 0;
-        const cost = parseFloat(item.products?.cost_price || '0');
-        const itemProfit = price - (qty * cost);
-        totalProfit += itemProfit;
-
-        const dayStr = item.sales?.created_at.split('T')[0];
-        dailyProfitMap.set(dayStr, (dailyProfitMap.get(dayStr) || 0) + itemProfit);
-      });
-
-      // Construct ordered daily trend list
-      const dailyTrend: { date: string; revenue: number; profit: number }[] = [];
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dayStr = d.toISOString().split('T')[0];
-        dailyTrend.push({
-          date: dayStr.slice(5), // e.g. "06-05"
-          revenue: dailyMap.get(dayStr) || 0,
-          profit: dailyProfitMap.get(dayStr) || 0,
-        });
-      }
-
-      return {
-        success: true,
-        data: {
-          totalRevenue,
-          totalProfit,
-          paymentMethods,
-          dailyTrend,
-          transactionCount: sales?.length || 0,
-        },
-      };
-    }
-
-    if (type === 'sales') {
-      // Fetch invoices
-      let invoicesQuery = supabaseAdmin
-        .from('sales')
-        .select('id, total_amount, payment_method, created_at, cashier_id, customer_id, customers(name), branches(name), cashier:users!sales_cashier_id_fkey(name)')
-        .eq('business_id', businessId)
-        .gte('created_at', `${startDate}T00:00:00Z`)
-        .lte('created_at', `${endDate}T23:59:59Z`)
-        .order('created_at', { ascending: false });
-
-      if (activeBranchId !== 'all') {
-        invoicesQuery = invoicesQuery.eq('branch_id', activeBranchId);
-      }
-
-      const { data: invoices, error: invErr } = await invoicesQuery;
-      if (invErr) throw new Error(invErr.message);
-
-      // Fetch top selling items
-      let itemsQuery = supabaseAdmin
-        .from('sale_items')
-        .select('quantity, total_price, product_id, products(name, sku, cost_price), sales!inner(branch_id, created_at)')
-        .eq('business_id', businessId)
-        .gte('sales.created_at', `${startDate}T00:00:00Z`)
-        .lte('sales.created_at', `${endDate}T23:59:59Z`);
-
-      if (activeBranchId !== 'all') {
-        itemsQuery = itemsQuery.eq('sales.branch_id', activeBranchId);
-      }
-
-      const { data: items, error: itemsErr } = await itemsQuery;
-      if (itemsErr) throw new Error(itemsErr.message);
-
-      // Compile top items and total profit
-      let totalProfit = 0;
-      const productMap = new Map<string, { name: string; sku: string; quantity: number; revenue: number }>();
-      items?.forEach((item) => {
-        const pId = item.product_id;
-        const qty = item.quantity || 0;
-        const rev = parseFloat(item.total_price || '0');
-        const pInfo = item.products as any;
-        const name = pInfo?.name || 'Unknown Product';
-        const sku = pInfo?.sku || 'N/A';
-        const cost = parseFloat(pInfo?.cost_price || '0');
-        
-        totalProfit += rev - (qty * cost);
-
-        const existing = productMap.get(pId) || { name, sku, quantity: 0, revenue: 0 };
-        existing.quantity += qty;
-        existing.revenue += rev;
-        productMap.set(pId, existing);
-      });
-
-      const topProducts = Array.from(productMap.values())
-        .sort((a, b) => b.quantity - a.quantity)
-        .slice(0, 10);
-
-      const totalRevenue = invoices?.reduce((sum, i) => sum + parseFloat(i.total_amount || '0'), 0) || 0;
-
-      return {
-        success: true,
-        data: {
-          invoices: invoices || [],
-          topProducts,
-          totalSalesCount: invoices?.length || 0,
-          totalRevenue,
-          totalProfit,
-        },
-      };
-    }
-
-    if (type === 'inventory') {
-      // Fetch branch overrides for calculation
-      const { data: overrides } = await supabaseAdmin
-        .from('branch_product_prices')
-        .select('price, product_id, branch_id')
-        .eq('business_id', businessId);
-
-      const overrideMap = new Map<string, number>();
-      overrides?.forEach((o) => {
-        overrideMap.set(`${o.branch_id}_${o.product_id}`, parseFloat(o.price || '0'));
-      });
-
-      let invQuery = supabaseAdmin
-        .from('inventory')
-        .select('quantity, reorder_level, product_id, branch_id, branches(name), products(name, sku, cost_price, default_price)')
-        .eq('business_id', businessId);
-
-      if (activeBranchId !== 'all') {
-        invQuery = invQuery.eq('branch_id', activeBranchId);
-      }
-
-      const { data: inventory, error: invErr } = await invQuery;
-      if (invErr) throw new Error(invErr.message);
-
-      let totalItems = 0;
-      let lowStockCount = 0;
-      let costValuation = 0;
-      let retailValuation = 0;
-
-      inventory?.forEach((item) => {
-        const qty = item.quantity || 0;
-        const reorder = item.reorder_level || 0;
-        const prod = item.products as any;
-        const cost = parseFloat(prod?.cost_price || '0');
-        const defaultPrice = parseFloat(prod?.default_price || '0');
-
-        const finalPrice = overrideMap.get(`${item.branch_id}_${item.product_id}`) ?? defaultPrice;
-
-        totalItems += qty;
-        if (qty <= reorder) {
-          lowStockCount++;
-        }
-        costValuation += qty * cost;
-        retailValuation += qty * finalPrice;
-      });
-
-      // Fetch stock movements log inside dates
-      let movementQuery = supabaseAdmin
-        .from('stock_movements')
-        .select('id, quantity, type, notes, created_at, products(name, sku), branches(name), recorded_by_user:users!stock_movements_recorded_by_fkey(name)')
-        .eq('business_id', businessId)
-        .gte('created_at', `${startDate}T00:00:00Z`)
-        .lte('created_at', `${endDate}T23:59:59Z`)
-        .order('created_at', { ascending: false });
-
-      if (activeBranchId !== 'all') {
-        movementQuery = movementQuery.eq('branch_id', activeBranchId);
-      }
-
-      const { data: movements, error: moveErr } = await movementQuery;
-      if (moveErr) throw new Error(moveErr.message);
-
-      return {
-        success: true,
-        data: {
-          totalItems,
-          lowStockCount,
-          costValuation,
-          retailValuation,
-          potentialProfit: retailValuation - costValuation,
-          movements: movements || [],
-          inventory: inventory || [],
-        },
-      };
-    }
-
-    if (type === 'debt') {
-      let creditQuery = supabaseAdmin
-        .from('sales')
-        .select('total_amount, created_at, customer_id, customers(name, email, phone), branches(name)')
-        .eq('business_id', businessId)
-        .eq('payment_method', 'store_credit')
-        .gte('created_at', `${startDate}T00:00:00Z`)
-        .lte('created_at', `${endDate}T23:59:59Z`);
-
-      if (activeBranchId !== 'all') {
-        creditQuery = creditQuery.eq('branch_id', activeBranchId);
-      }
-
-      const { data: creditSales, error: dbErr } = await creditQuery;
-      if (dbErr) throw new Error(dbErr.message);
-
-      const customerDebts = new Map<string, { name: string; email: string; phone: string; totalDebt: number; transactionCount: number; lastDate: string }>();
-
-      let overallDebt = 0;
-
-      creditSales?.forEach((s) => {
-        const amt = parseFloat(s.total_amount || '0');
-        overallDebt += amt;
-
-        const cust = s.customers as any;
-        const cId = s.customer_id || 'anonymous';
-        const name = cust?.name || 'Walk-in (Store Credit)';
-        const email = cust?.email || 'N/A';
-        const phone = cust?.phone || 'N/A';
-        const dateStr = s.created_at;
-
-        const existing = customerDebts.get(cId) || { name, email, phone, totalDebt: 0, transactionCount: 0, lastDate: dateStr };
-        existing.totalDebt += amt;
-        existing.transactionCount += 1;
-        if (new Date(dateStr) > new Date(existing.lastDate)) {
-          existing.lastDate = dateStr;
-        }
-        customerDebts.set(cId, existing);
-      });
-
-      const debtorsList = Array.from(customerDebts.values()).sort((a, b) => b.totalDebt - a.totalDebt);
-
-      return {
-        success: true,
-        data: {
-          overallDebt,
-          debtorsCount: customerDebts.size,
-          debtors: debtorsList,
-          creditSales: creditSales || [],
-        },
-      };
-    }
-
-    if (type === 'branch') {
-      // Branch-wide comparisons (only relevant across branches)
-      const { data: branches, error: branchErr } = await supabaseAdmin
-        .from('branches')
-        .select('id, name')
-        .eq('business_id', businessId);
-      
-      if (branchErr) throw new Error(branchErr.message);
-
-      let salesQuery = supabaseAdmin
-        .from('sales')
-        .select('total_amount, branch_id')
-        .eq('business_id', businessId)
-        .gte('created_at', `${startDate}T00:00:00Z`)
-        .lte('created_at', `${endDate}T23:59:59Z`);
-
-      const { data: sales, error: salesErr } = await salesQuery;
-      if (salesErr) throw new Error(salesErr.message);
-
-      const branchMap = new Map<string, { name: string; revenue: number; salesCount: number }>();
-      branches?.forEach((b) => {
-        branchMap.set(b.id, { name: b.name, revenue: 0, salesCount: 0 });
-      });
-
-      sales?.forEach((s) => {
-        const amt = parseFloat(s.total_amount || '0');
-        const bId = s.branch_id;
-        const bData = branchMap.get(bId) || { name: 'Unknown Branch', revenue: 0, salesCount: 0 };
-        bData.revenue += amt;
-        bData.salesCount += 1;
-        branchMap.set(bId, bData);
-      });
-
-      const comparison = Array.from(branchMap.entries()).map(([id, info]) => ({
-        id,
-        name: info.name,
-        revenue: info.revenue,
-        salesCount: info.salesCount,
-        avgBasket: info.salesCount > 0 ? info.revenue / info.salesCount : 0,
-      })).sort((a, b) => b.revenue - a.revenue);
-
-      return {
-        success: true,
-        data: {
-          comparison,
-        },
-      };
-    }
-
-    return { error: 'Invalid report type.' };
+    return {
+      data: {
+        totalSales,
+        totalPaid,
+        totalCredit,
+        count,
+        averageOrderValue,
+        breakdown: { paidCount, partialCount, creditCount },
+        sales: list,
+      },
+    };
   } catch (err: any) {
-    console.error('Reports calculation error:', err);
-    return { error: err.message || 'An error occurred during calculation.' };
+    return { error: err.message || 'Failed to generate sales report.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. EXPENSES REPORT
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getExpensesReport(range: string = 'month') {
+  try {
+    const { businessId, supabase } = await getAuthContext();
+    const { start } = getRangeDates(range);
+    const startDateStr = start.split('T')[0];
+
+    const { data: expenses, error } = await supabase
+      .from('expenses')
+      .select('*, category:expense_categories(id, name)')
+      .eq('business_id', businessId)
+      .gte('expense_date', startDateStr)
+      .order('expense_date', { ascending: false });
+
+    if (error) throw error;
+
+    const list = expenses || [];
+    const totalExpenses = list.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+
+    // Group by category
+    const categoryMap = new Map<string, { name: string; total: number; count: number }>();
+    for (const exp of list) {
+      const catName = exp.category?.name || 'General Expense';
+      const current = categoryMap.get(catName) || { name: catName, total: 0, count: 0 };
+      current.total += Number(exp.amount) || 0;
+      current.count += 1;
+      categoryMap.set(catName, current);
+    }
+
+    const byCategory = Array.from(categoryMap.values()).map((c) => ({
+      ...c,
+      percentage: totalExpenses > 0 ? Math.round((c.total / totalExpenses) * 100) : 0,
+    }));
+
+    return {
+      data: {
+        totalExpenses,
+        count: list.length,
+        byCategory,
+        expenses: list,
+      },
+    };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to generate expense report.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. INVENTORY REPORT
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getInventoryReport() {
+  try {
+    const { businessId, supabase } = await getAuthContext();
+
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('*, category:categories(id, name)')
+      .eq('business_id', businessId)
+      .eq('status', 'active');
+
+    if (error) throw error;
+
+    const list = products || [];
+    const totalItems = list.length;
+    let totalStockQty = 0;
+    let totalCostValuation = 0;
+    let totalRetailValuation = 0;
+    let lowStockCount = 0;
+    let outOfStockCount = 0;
+
+    for (const p of list) {
+      const stock = Number(p.current_stock) || 0;
+      const minStock = Number(p.minimum_stock) || 0;
+      const cost = Number(p.purchase_price) || 0;
+      const sell = Number(p.selling_price) || 0;
+
+      totalStockQty += stock;
+      totalCostValuation += stock * cost;
+      totalRetailValuation += stock * sell;
+
+      if (stock === 0) outOfStockCount += 1;
+      else if (stock <= minStock) lowStockCount += 1;
+    }
+
+    return {
+      data: {
+        totalItems,
+        totalStockQty,
+        totalCostValuation,
+        totalRetailValuation,
+        potentialMargin: totalRetailValuation - totalCostValuation,
+        lowStockCount,
+        outOfStockCount,
+        products: list,
+      },
+    };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to generate inventory report.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. PERFORMANCE REPORT (PROFIT & CREDIT)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getPerformanceReport(range: string = 'month') {
+  try {
+    const { businessId, supabase } = await getAuthContext();
+    const { start, end } = getRangeDates(range);
+    const startDateStr = start.split('T')[0];
+
+    // Sales + COGS
+    const { data: sales } = await supabase
+      .from('sales')
+      .select('*, items:sale_items(cost_price, quantity)')
+      .eq('business_id', businessId)
+      .eq('status', 'completed')
+      .gte('created_at', start)
+      .lte('created_at', end);
+
+    const salesList = (sales as any[]) || [];
+    const totalRevenue = salesList.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
+
+    let totalCogs = 0;
+    for (const s of salesList) {
+      if (s.items) {
+        for (const item of s.items) {
+          totalCogs += (Number(item.cost_price) || 0) * (Number(item.quantity) || 1);
+        }
+      }
+    }
+
+    // Expenses
+    const { data: expenses } = await supabase
+      .from('expenses')
+      .select('amount')
+      .eq('business_id', businessId)
+      .gte('expense_date', startDateStr);
+
+    const totalExpenses = (expenses || []).reduce(
+      (acc, e) => acc + (Number(e.amount) || 0),
+      0
+    );
+
+    // Outstanding Credit
+    const { data: creditSales } = await supabase
+      .from('sales')
+      .select('balance_due')
+      .eq('business_id', businessId)
+      .eq('status', 'completed')
+      .gt('balance_due', 0);
+
+    const totalCreditDue = (creditSales || []).reduce(
+      (acc, s) => acc + (Number(s.balance_due) || 0),
+      0
+    );
+
+    const grossEstimatedProfit = totalRevenue - totalCogs;
+    const netEstimatedProfit = grossEstimatedProfit - totalExpenses;
+
+    return {
+      data: {
+        totalRevenue,
+        totalCogs,
+        grossEstimatedProfit,
+        totalExpenses,
+        netEstimatedProfit,
+        totalCreditDue,
+      },
+    };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to generate performance report.' };
   }
 }

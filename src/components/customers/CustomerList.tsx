@@ -1,324 +1,273 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createCustomer } from '@/app/actions/customers';
-import { Plus, Search, Loader2, Users, TrendingUp } from 'lucide-react';
-import { useUIStore } from '@/stores/uiStore';
-import { db } from '@/lib/offline/db';
+import {
+  Users,
+  Search,
+  Plus,
+  Phone,
+  Mail,
+  MapPin,
+  CreditCard,
+  UserPlus,
+} from 'lucide-react';
+import { Customer } from '@/types';
+import { getCustomers, createCustomer } from '@/app/actions/customers';
+import { formatCurrency } from '@/utils/formatters';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { LoadingState } from '@/components/ui/LoadingState';
 
-interface Props {
-  initialCustomers: any[];
-  branches: any[];
-  role: string;
-}
+export default function CustomerList() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
-export default function CustomerList({ initialCustomers, branches, role }: Props) {
-  const { currentBranchId } = useUIStore();
-  const [filterText, setFilterText] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Add Customer Modal
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const [localCustomers, setLocalCustomers] = useState<any[]>(initialCustomers);
-
-  // Sync cache on load
-  useEffect(() => {
-    const syncLocal = async () => {
-      try {
-        if (initialCustomers.length > 0) {
-          await db.customers.clear();
-          await db.customers.bulkPut(initialCustomers.map(c => ({
-            id: c.id,
-            name: c.name,
-            email: c.email || undefined,
-            phone: c.phone || undefined,
-            branch_id: c.branch_id || 'all',
-            business_id: c.business_id,
-            total_spend: parseFloat(c.total_spend || '0')
-          })));
-          setLocalCustomers(initialCustomers);
-        } else {
-          const cached = await db.customers.toArray();
-          setLocalCustomers(cached);
-        }
-      } catch (err) {
-        console.error('CustomerList offline cache sync error:', err);
-      }
-    };
-    syncLocal();
-  }, [initialCustomers]);
-
-  const activeBranchId = (role === 'MANAGER' || role === 'STAFF') ? currentBranchId : currentBranchId;
-
-  // Filter customers based on registered branch
-  const branchCustomers = activeBranchId === 'all'
-    ? localCustomers
-    : localCustomers.filter(c => c.branch_id === activeBranchId);
-
-  const filtered = branchCustomers.filter(c => 
-    c.name.toLowerCase().includes(filterText.toLowerCase()) ||
-    (c.email && c.email.toLowerCase().includes(filterText.toLowerCase())) ||
-    (c.phone && c.phone.includes(filterText))
-  );
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const fetchCustomers = async () => {
     setLoading(true);
-    setError(null);
+    const res = await getCustomers(search);
+    if (res.data) setCustomers(res.data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCustomers();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const handleCreateCustomer = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
 
     const formData = new FormData(e.currentTarget);
-    const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
-    const phone = formData.get('phone') as string;
-    const branchId = formData.get('branchId') as string;
-
-    // Intercept Offline Mode
-    if (typeof window !== 'undefined' && !navigator.onLine) {
-      try {
-        const offlineCustomerId = `OFFLINE-C-${crypto.randomUUID().slice(0, 8)}`;
-        const newCust = {
-          id: offlineCustomerId,
-          name,
-          email: email || undefined,
-          phone: phone || undefined,
-          branch_id: branchId || 'all',
-          business_id: 'offline',
-          total_spend: 0
-        };
-        
-        await db.customers.add(newCust);
-        
-        await db.sync_queue.add({
-          type: 'CUSTOMER_CREATED',
-          payload: newCust,
-          status: 'queued',
-          created_at: new Date().toISOString()
-        });
-
-        const updatedList = await db.customers.toArray();
-        setLocalCustomers(updatedList);
-        setShowAddModal(false);
-        setLoading(false);
-      } catch (err: any) {
-        setError(`Failed to save customer offline: ${err.message}`);
-        setLoading(false);
-      }
-      return;
-    }
-
     const res = await createCustomer(formData);
+    setSubmitting(false);
 
-    if (res?.error) {
-      setError(res.error);
-      setLoading(false);
+    if (res.error) {
+      setFormError(res.error);
     } else {
-      setShowAddModal(false);
-      setLoading(false);
-      window.location.reload();
+      setIsAddModalOpen(false);
+      fetchCustomers();
     }
   };
 
+  const totalOutstanding = customers.reduce(
+    (acc, c) => acc + (Number(c.outstanding_balance) || 0),
+    0
+  );
+
   return (
     <div className="space-y-6">
-      
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-medium text-xs">
-        
-        {/* Scoped Customers Count */}
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
-              {activeBranchId === 'all' ? 'Total Registered Customers' : 'Registered Customers (This Branch)'}
-            </span>
-            <span className="text-2xl font-black text-white block">
-              {branchCustomers.length}
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
-            <Users className="w-6 h-6" />
-          </div>
-        </div>
+      <PageHeader
+        title="Customer Directory"
+        description="Manage customer profiles, contact numbers, and monitor individual credit balances."
+        action={
+          <Button
+            onClick={() => {
+              setFormError(null);
+              setIsAddModalOpen(true);
+            }}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            Add Customer
+          </Button>
+        }
+      />
 
-        {/* Scoped CRM Value */}
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 flex items-center justify-between">
-          <div className="space-y-1.5">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
-              {activeBranchId === 'all' ? 'Total CRM Spend Value' : 'Branch CRM Spend Value'}
-            </span>
-            <span className="text-2xl font-black text-white block">
-              ₦{branchCustomers.reduce((sum, c) => sum + parseFloat(c.total_spend || '0'), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-        </div>
+      {/* Overview Cards & Search */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card padding="md" className="border-l-4 border-l-blue-600">
+          <p className="text-xs font-semibold uppercase text-slate-500">Registered Customers</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{customers.length}</p>
+          <p className="text-xs text-slate-400 mt-1">Total customer profiles</p>
+        </Card>
 
+        <Card padding="md" className="border-l-4 border-l-red-500">
+          <p className="text-xs font-semibold uppercase text-slate-500">Total Outstanding Credit</p>
+          <p className="text-2xl font-bold text-red-600 mt-1">
+            {formatCurrency(totalOutstanding)}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">Unpaid debt across all customers</p>
+        </Card>
+
+        <Card padding="sm" className="flex items-center">
+          <div className="w-full">
+            <Input
+              placeholder="Search by customer name or phone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              leftIcon={<Search className="w-4 h-4" />}
+            />
+          </div>
+        </Card>
       </div>
 
-      {/* Search and Action */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div className="relative w-full sm:max-w-xs">
-          <input
-            type="text"
-            placeholder="Search name, email, phone..."
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-            className="block w-full border border-slate-800 bg-slate-900 text-white rounded-lg px-4 py-2 text-xs outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-500"
-          />
-        </div>
-
-        <button
-          onClick={() => {
-            setError(null);
-            setShowAddModal(true);
-          }}
-          className="flex items-center gap-2 bg-blue-600 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Add Customer
-        </button>
-      </div>
-
-      {/* Customer CRM Table */}
-      <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-950 text-slate-500 font-bold uppercase tracking-wider">
-                <th className="py-4 px-6">Customer Details</th>
-                <th className="py-4 px-6">Phone Number</th>
-                <th className="py-4 px-6">Registered Branch</th>
-                <th className="py-4 px-6">Total Spend (₦)</th>
-                <th className="py-4 px-6 text-right">Joined Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-900 font-medium">
-              {filtered.length === 0 ? (
+      {/* Customer Table */}
+      {loading ? (
+        <LoadingState message="Loading customers..." />
+      ) : customers.length === 0 ? (
+        <EmptyState
+          title={search ? 'No matching customers' : 'No customers saved yet'}
+          description={
+            search
+              ? 'Try searching with another keyword.'
+              : 'Add customer profiles to record credit sales, track debt repayments, and view purchase histories.'
+          }
+          actionLabel={search ? undefined : 'Add First Customer'}
+          actionIcon={<Plus className="w-4 h-4" />}
+          onAction={() => setIsAddModalOpen(true)}
+        />
+      ) : (
+        <Card padding="none" className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-700">
+              <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">
-                    No customers found in CRM database.
-                  </td>
+                  <th className="py-3.5 px-4 sm:px-6">Customer Name</th>
+                  <th className="py-3.5 px-4">Contact Phone</th>
+                  <th className="py-3.5 px-4">Address / Location</th>
+                  <th className="py-3.5 px-4 text-right">Outstanding Credit</th>
+                  <th className="py-3.5 px-4 sm:px-6 text-right">Status</th>
                 </tr>
-              ) : (
-                filtered.map((c) => {
-                  const registeredBranchName = branches.find(b => b.id === c.branch_id)?.name || 'Central / All Outlets';
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {customers.map((c) => {
+                  const hasDebt = (c.outstanding_balance || 0) > 0;
+
                   return (
-                    <tr key={c.id} className="hover:bg-slate-900/20 text-slate-300">
-                      <td className="py-4 px-6 space-y-1">
-                        <span className="text-white font-bold block">{c.name}</span>
-                        {c.email && <span className="text-slate-500 text-[10px] block">{c.email}</span>}
+                    <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Name */}
+                      <td className="py-3.5 px-4 sm:px-6 font-semibold text-slate-900">
+                        {c.name}
+                        {c.notes && (
+                          <p className="text-xs text-slate-400 font-normal mt-0.5">{c.notes}</p>
+                        )}
                       </td>
-                      <td className="py-4 px-6 text-slate-300 font-mono">
-                        {c.phone || 'N/A'}
+
+                      {/* Phone */}
+                      <td className="py-3.5 px-4 text-xs text-slate-600">
+                        {c.phone ? (
+                          <div className="flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{c.phone}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
-                      <td className="py-4 px-6 text-slate-400 font-medium">
-                        {registeredBranchName}
+
+                      {/* Address */}
+                      <td className="py-3.5 px-4 text-xs text-slate-500">
+                        {c.address ? (
+                          <div className="flex items-center gap-1.5 max-w-xs truncate">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{c.address}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
-                      <td className="py-4 px-6 text-white font-bold text-sm">
-                        ₦{parseFloat(c.total_spend || '0').toLocaleString(undefined, { minimumFractionDigits: 2 })}
+
+                      {/* Outstanding Debt */}
+                      <td className="py-3.5 px-4 text-right">
+                        {hasDebt ? (
+                          <span className="font-bold text-red-600">
+                            {formatCurrency(c.outstanding_balance)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-emerald-600 font-medium">Clear (₦0)</span>
+                        )}
                       </td>
-                      <td className="py-4 px-6 text-right text-slate-500">
-                        {new Date(c.created_at).toLocaleDateString()}
+
+                      {/* Status */}
+                      <td className="py-3.5 px-4 sm:px-6 text-right">
+                        {hasDebt ? (
+                          <Badge variant="danger" size="sm" dot>
+                            OWES MONEY
+                          </Badge>
+                        ) : (
+                          <Badge variant="success" size="sm">
+                            GOOD
+                          </Badge>
+                        )}
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ADD CUSTOMER MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-6 text-slate-100 shadow-2xl animate-in zoom-in duration-250">
-            <div>
-              <h3 className="text-sm font-bold text-white leading-none">Register Customer</h3>
-              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block mt-1">
-                {activeBranchId === 'all' ? 'Applies to the business CRM' : `Registers under branch: ${branches.find(b => b.id === activeBranchId)?.name || 'This Branch'}`}
-              </span>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="bg-red-950/40 border border-red-800 rounded-xl p-3.5 text-xs text-red-400 font-medium">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Customer Name</label>
-                <input
-                  name="name"
-                  type="text"
-                  required
-                  placeholder="e.g. John Doe"
-                  className="block w-full border border-slate-800 bg-slate-950 text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Email Address</label>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="e.g. john@example.com"
-                  className="block w-full border border-slate-800 bg-slate-950 text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Phone Number</label>
-                <input
-                  name="phone"
-                  type="text"
-                  placeholder="e.g. +23480..."
-                  className="block w-full border border-slate-800 bg-slate-950 text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-600"
-                />
-              </div>
-
-              {activeBranchId === 'all' ? (
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Register Branch Location</label>
-                  <select
-                    name="branchId"
-                    required
-                    className="block w-full border border-slate-800 bg-slate-950 text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-all font-medium cursor-pointer appearance-none"
-                  >
-                    <option value="all">Central / All Outlets</option>
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <input type="hidden" name="branchId" value={activeBranchId} />
-              )}
-
-              <div className="pt-2 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="border border-slate-800 hover:bg-slate-950 text-slate-300 font-bold text-[10px] uppercase tracking-wider px-4 py-2 rounded-lg transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex items-center gap-2 bg-blue-600 text-white font-bold text-[10px] uppercase tracking-wider px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-all cursor-pointer"
-                >
-                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Register'}
-                </button>
-              </div>
-            </form>
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </Card>
       )}
 
+      {/* Add Customer Modal */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add Customer Profile"
+        description="Register a regular customer or credit buyer"
+        maxWidth="md"
+      >
+        <form onSubmit={handleCreateCustomer} className="space-y-4">
+          {formError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">
+              {formError}
+            </div>
+          )}
+
+          <Input
+            label="Customer Full Name"
+            name="name"
+            placeholder="e.g. Alhaji Mustapha"
+            required
+          />
+
+          <Input
+            label="Phone Number"
+            name="phone"
+            type="tel"
+            placeholder="e.g. 08031234567"
+          />
+
+          <Input
+            label="Address / Shop Location (Optional)"
+            name="address"
+            placeholder="e.g. Block C4, Wuse Market, Abuja"
+          />
+
+          <Input
+            label="Notes / Description (Optional)"
+            name="notes"
+            placeholder="e.g. Wholesale grain buyer, trusted customer"
+          />
+
+          <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAddModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={submitting}>
+              Save Customer
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

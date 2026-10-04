@@ -1,52 +1,75 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020617; /* Slate 950 */
-  --foreground: #f8fafc; /* Slate 50 */
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --surface: #FFFFFF;
+  --surface-hover: #F1F5F9;
+  --border: #E2E8F0;
+  --border-focus: #0F172A;
+  
+  /* Primary Deep Navy */
+  --primary: #0F172A;
+  --primary-hover: #1E293B;
+  --primary-foreground: #FFFFFF;
+
+  /* Semantic Colors */
+  --success: #10B981;
+  --success-bg: #ECFDF5;
+  --success-text: #065F46;
+
+  --warning: #F59E0B;
+  --warning-bg: #FFFBEB;
+  --warning-text: #92400E;
+
+  --danger: #EF4444;
+  --danger-bg: #FEF2F2;
+  --danger-text: #991B1B;
+
+  --info: #3B82F6;
+  --info-bg: #EFF6FF;
+  --info-text: #1E40AF;
+
+  --muted: #64748B;
+  --muted-light: #94A3B8;
+  --muted-bg: #F1F5F9;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
   --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-  /* Brand Colors (New vibrant TraderERP Blue/Indigo) */
-  --color-blue-50: #EBF0FF;
-  --color-blue-100: #D6E0FF;
-  --color-blue-200: #ADC2FF;
-  --color-blue-300: #85A3FF;
-  --color-blue-400: #5C83FF;
-  --color-blue-500: #3562FF;
-  --color-blue-600: #254EDB;
-  --color-blue-700: #1C3EB1;
-  --color-blue-800: #132D8E;
-  --color-blue-900: #102683;
-  --color-blue-950: #08134F;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-:root.light, html.light, .light {
-  --background: #ffffff !important;
-  --foreground: #0f172a !important;
-
-  --color-slate-950: #f8fafc !important;
-  --color-slate-900: #f1f5f9 !important;
-  --color-slate-800: #e2e8f0 !important;
-  --color-slate-700: #cbd5e1 !important;
-  --color-slate-600: #94a3b8 !important;
-  --color-slate-500: #64748b !important;
-  --color-slate-400: #475569 !important;
-  --color-slate-300: #1e293b !important;
-  --color-slate-200: #0f172a !important;
-  --color-slate-100: #020617 !important;
-  --color-slate-50: #0f172a !important;
-
-  --color-white: #0f172a !important;
+/* Custom Scrollbar for desktop */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }
 
+/* Focus styling */
+:focus-visible {
+  outline: 2px solid #0F172A;
+  outline-offset: 2px;
+}

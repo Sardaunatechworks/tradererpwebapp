@@ -17,7 +17,7 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({
             request,
           });
@@ -26,58 +26,15 @@ export async function proxy(request: NextRequest) {
           );
         },
       },
-      global: {
-        fetch: (url, options) => {
-          const controller = new AbortController();
-          const id = setTimeout(() => controller.abort(), 3000); // 3 seconds timeout
-          return fetch(url, {
-            ...options,
-            signal: controller.signal,
-          })
-            .then((res) => {
-              clearTimeout(id);
-              return res;
-            })
-            .catch((err) => {
-              clearTimeout(id);
-              throw err;
-            });
-        },
-      },
     }
   );
 
   let user = null;
-  let isOffline = false;
   try {
-    const { data, error } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
     user = data?.user || null;
-    if (error) {
-      const errMsg = error.message?.toLowerCase() || '';
-      if (
-        errMsg.includes('fetch failed') ||
-        errMsg.includes('network error') ||
-        errMsg.includes('timeout') ||
-        errMsg.includes('unreachable') ||
-        error.status === 0 ||
-        error.status === 504 ||
-        error.status === 502 ||
-        error.status === 503
-      ) {
-        isOffline = true;
-      }
-    }
-  } catch (err: any) {
-    const errMsg = err.message?.toLowerCase() || '';
-    if (
-      errMsg.includes('fetch') ||
-      errMsg.includes('network') ||
-      errMsg.includes('dns') ||
-      errMsg.includes('unreachable') ||
-      errMsg.includes('timeout')
-    ) {
-      isOffline = true;
-    }
+  } catch (err) {
+    console.error('Auth error in middleware:', err);
   }
 
   const url = request.nextUrl.clone();
@@ -93,20 +50,11 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // /signup redirects to /login?tab=signup via page component; treat both and root / as public
-  const isPublicRoute = path === '/login' || path === '/signup' || path === '/';
+  const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/'];
+  const isPublicRoute = publicRoutes.includes(path);
 
+  // If user is not authenticated
   if (!user) {
-    const hasAuthCookies = request.cookies.getAll().some(
-      cookie => cookie.name.includes('auth-token') || cookie.name.includes('sb-')
-    );
-
-    // If offline and we have auth cookies, assume logged in to prevent redirect to /login
-    if (isOffline && hasAuthCookies) {
-      return response;
-    }
-
-    // If not logged in and not on a public route, redirect to login
     if (!isPublicRoute) {
       url.pathname = '/login';
       return NextResponse.redirect(url);
@@ -114,53 +62,12 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // If user is logged in
-  const role = user.app_metadata?.role;
+  // If user is authenticated
   const businessId = user.app_metadata?.business_id;
 
-  // 1. Check if user is suspended, restricted, or deleted
-  const status = user.app_metadata?.status;
-  if (status === 'SUSPENDED' || status === 'RESTRICTED' || status === 'DELETED') {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    
-    let errMsg = 'Your account has been suspended. Please contact your administrator.';
-    if (status === 'RESTRICTED') {
-      errMsg = 'Your account is restricted. Please contact your administrator for assistance.';
-    } else if (status === 'DELETED') {
-      errMsg = 'Your account has been deleted. Please contact your administrator.';
-    }
-    
-    loginUrl.searchParams.set('error', errMsg);
-    const redirectResponse = NextResponse.redirect(loginUrl);
-    request.cookies.getAll().forEach((cookie) => {
-      if (cookie.name.includes('auth-token') || cookie.name.includes('sb-')) {
-        redirectResponse.cookies.set(cookie.name, '', { maxAge: 0 });
-      }
-    });
-    return redirectResponse;
-  }
-
-  // 2. Check if user must change password
-  const mustChangePassword = user.app_metadata?.must_change_password;
-  if (mustChangePassword) {
-    if (path !== '/change-password') {
-      url.pathname = '/change-password';
-      return NextResponse.redirect(url);
-    }
-    return response;
-  } else {
-    if (path === '/change-password') {
-      url.pathname = '/';
-      return NextResponse.redirect(url);
-    }
-  }
-
+  // If authenticated user visits public login/signup/landing
   if (isPublicRoute) {
-    // If logged in and trying to go to login/signup/root, redirect based on role
-    if (role === 'super_admin') {
-      url.pathname = '/platform';
-    } else if (!businessId) {
+    if (!businessId) {
       url.pathname = '/onboarding';
     } else {
       url.pathname = '/dashboard';
@@ -168,45 +75,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Handle protected route rules
-  if (role === 'super_admin') {
-    // Super admins can only access /platform
-    if (!path.startsWith('/platform')) {
-      url.pathname = '/platform';
-      return NextResponse.redirect(url);
-    }
-  } else {
-    // Regular users trying to access /platform
-    if (path.startsWith('/platform')) {
-      url.pathname = '/dashboard';
-      return NextResponse.redirect(url);
-    }
+  // If authenticated user has no business yet and is trying to access app pages
+  if (!businessId && !path.startsWith('/onboarding') && path !== '/login') {
+    url.pathname = '/onboarding';
+    return NextResponse.redirect(url);
+  }
 
-    // Regular users who haven't onboarded
-    if (!businessId && path !== '/onboarding') {
-      url.pathname = '/onboarding';
-      return NextResponse.redirect(url);
-    }
-
-    // Regular users who have onboarded and try to access /onboarding
-    if (businessId && path === '/onboarding') {
-      url.pathname = '/dashboard';
-      return NextResponse.redirect(url);
-    }
+  // If user already has business and goes to onboarding
+  if (businessId && path.startsWith('/onboarding')) {
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
   }
 
   return response;
 }
-
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
-};

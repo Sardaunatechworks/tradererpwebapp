@@ -1,13 +1,12 @@
 import React from 'react';
 import AppLayoutWrapper from '@/components/layout/AppLayoutWrapper';
-import BranchGuard from '@/components/auth/BranchGuard';
+import BusinessGuard from '@/components/auth/BusinessGuard';
 import SessionActivityGuard from '@/components/auth/SessionActivityGuard';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export const metadata = {
-  title: 'TraderERP Workspace',
-  description: 'Manage branches, inventory, and sales transactions.',
+  title: 'TraderERP — Business Management',
+  description: 'Simple, professional inventory, sales, expenses, and credit tracking for traders.',
 };
 
 export default async function AppLayout({
@@ -21,11 +20,7 @@ export default async function AppLayout({
 
   let businessName = '';
   if (businessId) {
-    const supabaseAdmin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    const { data: biz } = await supabaseAdmin
+    const { data: biz } = await supabase
       .from('businesses')
       .select('name')
       .eq('id', businessId)
@@ -34,11 +29,11 @@ export default async function AppLayout({
   }
 
   return (
-    <AppLayoutWrapper businessName={businessName}>
+    <BusinessGuard>
       <SessionActivityGuard />
-      <BranchGuard>
+      <AppLayoutWrapper businessName={businessName}>
         {children}
-      </BranchGuard>
-    </AppLayoutWrapper>
+      </AppLayoutWrapper>
+    </BusinessGuard>
   );
 }

@@ -1,23 +1,30 @@
 'use client';
 
-import React, { useState, Suspense, useEffect } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { signIn, signUp, sendPasswordResetEmail } from '@/app/actions/auth';
-import { Loader2, ArrowRight, ShieldAlert, Check } from 'lucide-react';
-import PasswordInput from '@/components/ui/PasswordInput';
+import { ArrowRight, CheckCircle2, Mail, Lock, User } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
-/* ──────────────────────────────────────────────────────────────────────────
-   TAB: SIGN IN
-────────────────────────────────────────────────────────────────────────── */
-function SignInTab({ onForgot }: { onForgot: () => void }) {
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
+  const urlMessage = searchParams.get('message');
+  const urlError = searchParams.get('error');
+
+  const [tab, setTab] = useState<'signin' | 'signup' | 'forgot'>(initialTab);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(urlError || null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(urlMessage || null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
+
     const formData = new FormData(e.currentTarget);
     const res = await signIn(formData);
     if (res?.error) {
@@ -26,428 +33,281 @@ function SignInTab({ onForgot }: { onForgot: () => void }) {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {error && (
-        <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 text-xs text-red-400 font-medium">
-          {error}
-        </div>
-      )}
-
-      <div className="space-y-4">
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
-            Email Address
-          </label>
-          <input
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="name@company.com"
-            className="block w-full border border-slate-800 bg-slate-900 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-600"
-          />
-        </div>
-
-        <div>
-          <div className="flex justify-between items-center mb-1.5">
-            <label className="block text-[10px] uppercase font-bold text-slate-400">
-              Password
-            </label>
-            <button
-              type="button"
-              onClick={onForgot}
-              className="text-[10px] text-blue-500 hover:text-blue-400 font-bold transition-colors cursor-pointer"
-            >
-              Forgot Password?
-            </button>
-          </div>
-          <PasswordInput name="password" required autoComplete="current-password" />
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-lg hover:bg-blue-700 transition-all shadow-md shadow-blue-900/10 disabled:opacity-50 cursor-pointer"
-      >
-        {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <>
-            Sign In <ArrowRight className="w-4 h-4" />
-          </>
-        )}
-      </button>
-    </form>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────────
-   TAB: SIGN UP
-────────────────────────────────────────────────────────────────────────── */
-function SignUpTab() {
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(false);
-    const formData = new FormData(e.currentTarget);
-    
-    const password = formData.get('password') as string;
-    const confirmPassword = formData.get('confirmPassword') as string;
+    setSuccessMessage(null);
 
-    if (password !== confirmPassword) {
+    const formData = new FormData(e.currentTarget);
+    const password = formData.get('password') as string;
+    const confirm = formData.get('confirmPassword') as string;
+
+    if (password !== confirm) {
       setError('Passwords do not match.');
       setLoading(false);
       return;
     }
 
     const res = await signUp(formData);
+    setLoading(false);
+
     if (res?.error) {
       setError(res.error);
-      setLoading(false);
     } else {
-      setSuccess(true);
-      setLoading(false);
+      setSuccessMessage('Account created! Please check your email or sign in below.');
+      setTab('signin');
     }
   };
 
-  if (success) {
-    return (
-      <div className="bg-emerald-950/40 border border-emerald-800 rounded-xl p-6 text-center space-y-4 animate-in fade-in">
-        <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto">
-          <Check className="w-6 h-6 text-emerald-400" />
-        </div>
-        <div>
-          <p className="text-sm font-bold text-emerald-300">Account Created!</p>
-          <p className="text-xs text-emerald-500 mt-1 leading-relaxed">
-            Check your email inbox to verify your address, then sign in to get started.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {error && (
-        <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 text-xs text-red-400 font-medium">
-          {error}
-        </div>
-      )}
-
-      <div className="space-y-4">
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
-            Full Name
-          </label>
-          <input
-            name="name"
-            type="text"
-            required
-            autoComplete="name"
-            placeholder="John Doe"
-            className="block w-full border border-slate-800 bg-slate-900 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-600"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
-            Email Address
-          </label>
-          <input
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="name@company.com"
-            className="block w-full border border-slate-800 bg-slate-900 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-600"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
-            Password
-          </label>
-          <PasswordInput name="password" required autoComplete="new-password" />
-        </div>
-
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
-            Confirm Password
-          </label>
-          <PasswordInput name="confirmPassword" required autoComplete="new-password" />
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-lg hover:bg-blue-700 transition-all shadow-md shadow-blue-900/10 disabled:opacity-50 cursor-pointer"
-      >
-        {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <>
-            Create Account <ArrowRight className="w-4 h-4" />
-          </>
-        )}
-      </button>
-    </form>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────────
-   TAB: FORGOT PASSWORD
-────────────────────────────────────────────────────────────────────────── */
-function ForgotTab({ onBack }: { onBack: () => void }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
+    setSuccessMessage(null);
+
     const formData = new FormData(e.currentTarget);
     const res = await sendPasswordResetEmail(formData);
+    setLoading(false);
+
     if (res?.error) {
       setError(res.error);
-      setLoading(false);
     } else {
-      setSuccess('A password reset link has been sent to your email.');
-      setLoading(false);
+      setSuccessMessage('Password reset link sent to your email.');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in">
+    <div className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-xl p-6 sm:p-8 space-y-6">
+      {/* Mobile Logo */}
+      <div className="flex flex-col items-center text-center lg:hidden">
+        <Logo iconSize="w-10 h-10" showText={true} />
+      </div>
+
+      {/* Tabs */}
+      {tab !== 'forgot' && (
+        <div className="flex border-b border-slate-200">
+          <button
+            type="button"
+            onClick={() => {
+              setTab('signin');
+              setError(null);
+            }}
+            className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition-colors cursor-pointer ${
+              tab === 'signin'
+                ? 'border-slate-900 text-slate-900'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTab('signup');
+              setError(null);
+            }}
+            className={`flex-1 py-3 text-sm font-semibold text-center border-b-2 transition-colors cursor-pointer ${
+              tab === 'signup'
+                ? 'border-slate-900 text-slate-900'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            Create Account
+          </button>
+        </div>
+      )}
+
+      {/* Alerts */}
       {error && (
-        <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 text-xs text-red-400 font-medium">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs text-red-700 font-medium">
           {error}
         </div>
       )}
-
-      {success && (
-        <div className="bg-emerald-950/40 border border-emerald-800 rounded-xl p-4 text-xs text-emerald-400 font-medium">
-          {success}
+      {successMessage && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-800 font-medium flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+          <span>{successMessage}</span>
         </div>
       )}
 
-      <div className="space-y-4">
-        <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">
-            Email Address
-          </label>
-          <input
+      {/* Sign In Form */}
+      {tab === 'signin' && (
+        <form onSubmit={handleSignIn} className="space-y-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Welcome Back</h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Enter your credentials to access your business workspace.
+            </p>
+          </div>
+
+          <Input
+            label="Email Address"
             name="email"
             type="email"
             required
             autoComplete="email"
-            placeholder="name@company.com"
-            className="block w-full border border-slate-800 bg-slate-900 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-all font-medium placeholder-slate-600"
+            placeholder="you@business.com"
+            leftIcon={<Mail className="w-4 h-4" />}
           />
-        </div>
-      </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-lg hover:bg-blue-700 transition-all shadow-md shadow-blue-900/10 disabled:opacity-50 cursor-pointer"
-      >
-        {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <>
-            Send Reset Link <ArrowRight className="w-4 h-4" />
-          </>
-        )}
-      </button>
-    </form>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────────
-   MAIN AUTH PAGE (with tab toggle + blocked account modal)
-────────────────────────────────────────────────────────────────────────── */
-type Tab = 'signin' | 'signup' | 'forgot';
-
-function AuthContent() {
-  const searchParams = useSearchParams();
-  const [tab, setTab] = useState<Tab>('signin');
-  const [modalMessage, setModalMessage] = useState<string | null>(null);
-  const [infoMessage, setInfoMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const errorParam = searchParams.get('error');
-    if (
-      errorParam &&
-      (errorParam.toLowerCase().includes('suspended') ||
-        errorParam.toLowerCase().includes('restricted') ||
-        errorParam.toLowerCase().includes('deleted'))
-    ) {
-      setModalMessage(errorParam);
-    }
-    const messageParam = searchParams.get('message');
-    if (messageParam) {
-      setInfoMessage(messageParam);
-    }
-    // If coming from /signup link
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'signup') setTab('signup');
-  }, [searchParams]);
-
-  const closeModal = () => {
-    setModalMessage(null);
-    window.history.replaceState(null, '', '/login');
-  };
-
-  return (
-    <>
-      <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-        {/* Header */}
-        <div className="space-y-1.5">
-          <div className="mb-4">
-            <Logo iconSize="w-9 h-9" textColorMode="dark" subtitle="Workspace Access" gap="gap-2.5" />
-          </div>
-          <p className="text-sm text-slate-400 font-medium leading-relaxed">
-            {tab === 'signin'
-              ? 'Welcome back. Sign in to your trading workspace.'
-              : tab === 'signup'
-              ? 'Create a new account to launch your trading workspace.'
-              : 'Enter your email to receive a password reset link.'}
-          </p>
-        </div>
-
-        {/* Tab Toggle */}
-        {tab !== 'forgot' && (
-          <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
-            <button
-              onClick={() => setTab('signin')}
-              className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-                tab === 'signin'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => setTab('signup')}
-              className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-                tab === 'signup'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
-        )}
-
-        {/* Info/Status Banner */}
-        {infoMessage && (
-          <div className="bg-blue-950/40 border border-blue-800 rounded-xl p-4 text-xs text-blue-400 font-medium animate-in fade-in slide-in-from-top-4 duration-200">
-            {infoMessage}
-          </div>
-        )}
-
-        {/* Form Panel */}
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl">
-          {tab === 'signin' ? (
-            <SignInTab onForgot={() => setTab('forgot')} />
-          ) : tab === 'signup' ? (
-            <SignUpTab />
-          ) : (
-            <ForgotTab onBack={() => setTab('signin')} />
-          )}
-        </div>
-
-        {/* Help text */}
-        <p className="text-center text-[11px] text-slate-600 font-medium">
-          {tab === 'signin' ? (
-            <>
-              Don&apos;t have an account?{' '}
-              <button
-                onClick={() => setTab('signup')}
-                className="text-blue-500 hover:text-blue-400 font-bold transition-colors cursor-pointer"
-              >
-                Create one free
-              </button>
-            </>
-          ) : tab === 'signup' ? (
-            <>
-              Already have an account?{' '}
-              <button
-                onClick={() => setTab('signin')}
-                className="text-blue-500 hover:text-blue-400 font-bold transition-colors cursor-pointer"
-              >
-                Sign in
-              </button>
-            </>
-          ) : (
-            <>
-              Remembered your password?{' '}
-              <button
-                onClick={() => setTab('signin')}
-                className="text-blue-500 hover:text-blue-400 font-bold transition-colors cursor-pointer"
-              >
-                Go back to sign in
-              </button>
-            </>
-          )}
-        </p>
-      </div>
-
-      {/* Blocked Account Modal */}
-      {modalMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-6 text-slate-100 shadow-2xl animate-in zoom-in duration-250">
-            <div className="text-center space-y-2">
-              <ShieldAlert className="w-10 h-10 text-red-500 mx-auto" />
-              <h3 className="text-sm font-bold text-white leading-none">Access Denied</h3>
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
-                Account Restriction Alert
-              </p>
-            </div>
-            <div className="space-y-4 text-center">
-              <p className="text-slate-300 text-xs font-semibold leading-relaxed">{modalMessage}</p>
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-[11px] text-slate-400 font-medium">
-                Please contact your systems administrator or help desk to resolve this hold.
-              </div>
-            </div>
-            <div className="pt-2 flex justify-center">
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium text-slate-700">
+                Password <span className="text-red-500">*</span>
+              </label>
               <button
                 type="button"
-                onClick={closeModal}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-wider px-6 py-2.5 rounded-lg transition-all cursor-pointer"
+                onClick={() => {
+                  setTab('forgot');
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
               >
-                Okay
+                Forgot Password?
               </button>
             </div>
+            <Input
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              placeholder="••••••••"
+              leftIcon={<Lock className="w-4 h-4" />}
+            />
           </div>
-        </div>
+
+          <div className="pt-2">
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              isLoading={loading}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+            >
+              Sign In to TraderERP
+            </Button>
+          </div>
+        </form>
       )}
-    </>
+
+      {/* Create Account Form */}
+      {tab === 'signup' && (
+        <form onSubmit={handleSignUp} className="space-y-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Create an Account</h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Start managing your stock, sales, and credit in minutes.
+            </p>
+          </div>
+
+          <Input
+            label="Full Name"
+            name="name"
+            type="text"
+            required
+            placeholder="Muhammad Bello"
+            leftIcon={<User className="w-4 h-4" />}
+          />
+
+          <Input
+            label="Email Address"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@business.com"
+            leftIcon={<Mail className="w-4 h-4" />}
+          />
+
+          <Input
+            label="Password"
+            name="password"
+            type="password"
+            required
+            autoComplete="new-password"
+            placeholder="At least 8 characters, 1 capital & 1 number"
+            leftIcon={<Lock className="w-4 h-4" />}
+          />
+
+          <Input
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            required
+            autoComplete="new-password"
+            placeholder="Re-enter password"
+            leftIcon={<Lock className="w-4 h-4" />}
+          />
+
+          <div className="pt-2">
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              isLoading={loading}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+            >
+              Create Account & Continue
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {/* Forgot Password View */}
+      {tab === 'forgot' && (
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Reset Password</h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Enter the email associated with your account and we will send you a reset link.
+            </p>
+          </div>
+
+          <Input
+            label="Email Address"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@business.com"
+            leftIcon={<Mail className="w-4 h-4" />}
+          />
+
+          <div className="pt-2 flex flex-col gap-2">
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              isLoading={loading}
+            >
+              Send Reset Link
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              className="w-full"
+              onClick={() => {
+                setTab('signin');
+                setError(null);
+                setSuccessMessage(null);
+              }}
+            >
+              Back to Sign In
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-        </div>
-      }
-    >
-      <AuthContent />
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading...</div>}>
+      <LoginContent />
     </Suspense>
   );
 }
