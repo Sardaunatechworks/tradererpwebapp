@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signUp, sendPasswordResetEmail } from '@/app/actions/auth';
 import { ArrowRight, CheckCircle2, Mail, Lock, User } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 function LoginContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
   const urlMessage = searchParams.get('message');
@@ -49,14 +50,21 @@ function LoginContent() {
       return;
     }
 
-    const res = await signUp(formData);
-    setLoading(false);
-
-    if (res?.error) {
-      setError(res.error);
-    } else {
-      setSuccessMessage('Account created! Please check your email or sign in below.');
-      setTab('signin');
+    try {
+      const res = await signUp(formData);
+      if (res?.error) {
+        setError(res.error);
+        setLoading(false);
+      } else {
+        router.push('/onboarding');
+        router.refresh();
+      }
+    } catch (err: any) {
+      if (err?.message?.includes('NEXT_REDIRECT')) {
+        return;
+      }
+      setError(err?.message || 'Failed to sign up.');
+      setLoading(false);
     }
   };
 

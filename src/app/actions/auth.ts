@@ -10,11 +10,11 @@ export async function signUp(formData: FormData) {
   const name = formData.get('name') as string;
 
   if (!email || !password || !name) {
-    return { error: 'All fields are required' };
+    return { error: 'All fields are required.' };
   }
 
   // Server-side email format validation (OWASP / Input Validation)
-  const emailTrimmed = email.trim();
+  const emailTrimmed = email.trim().toLowerCase();
   const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!EMAIL_REGEX.test(emailTrimmed)) {
     return { error: 'Invalid email address format.' };
@@ -31,43 +31,91 @@ export async function signUp(formData: FormData) {
     return { error: 'Password must contain at least one number.' };
   }
 
-  const supabase = await createClient();
+  try {
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
 
-  const { data, error } = await supabase.auth.signUp({
-    email: emailTrimmed,
-    password,
-    options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`,
-      data: {
+    let userId: string | null = null;
+
+    // 1. Create user directly with auto-confirmed email (skips email verification)
+    const { data: adminUser, error: adminErr } = await supabaseAdmin.auth.admin.createUser({
+      email: emailTrimmed,
+      password,
+      email_confirm: true,
+      user_metadata: {
         name,
       },
-    },
-  });
+    });
 
-  if (error) {
-    return { error: error.message };
-  }
+    if (adminErr) {
+      const errMsg = adminErr.message.toLowerCase();
+      if (errMsg.includes('already') || errMsg.includes('exists') || errMsg.includes('registered')) {
+        return { error: 'An account with this email already exists. Please sign in.' };
+      }
 
-  if (data?.user) {
-    try {
-      const { createClient: createAdminClient } = await import('@supabase/supabase-js');
-      const supabaseAdmin = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
+      // Fallback: standard signUp followed by admin email auto-confirmation
+      const supabase = await createClient();
+      const { data: regularData, error: regularErr } = await supabase.auth.signUp({
+        email: emailTrimmed,
+        password,
+        options: {
+          data: { name },
+        },
+      });
+
+      if (regularErr) {
+        return { error: regularErr.message };
+      }
+
+      if (regularData.user) {
+        userId = regularData.user.id;
+        // Auto-confirm the user email via admin
+        await supabaseAdmin.auth.admin.updateUserById(regularData.user.id, {
+          email_confirm: true,
+        });
+      }
+    } else if (adminUser.user) {
+      userId = adminUser.user.id;
+    }
+
+    // 2. Ensure public.users profile exists
+    if (userId) {
       await supabaseAdmin.from('users').upsert({
-        id: data.user.id,
+        id: userId,
         email: emailTrimmed,
         name: name,
-        role: 'OWNER',
-        status: 'active'
+        status: 'active',
       });
-    } catch (dbErr) {
-      console.error('Trigger fallback user profile insertion failed:', dbErr);
     }
+
+    // 3. Immediately sign in to establish active session cookies
+    const supabase = await createClient();
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: emailTrimmed,
+      password,
+    });
+
+    if (signInErr) {
+      return { error: `Account created, but sign-in failed: ${signInErr.message}` };
+    }
+  } catch (err: any) {
+    if (err?.message?.includes('NEXT_REDIRECT')) {
+      throw err;
+    }
+    return { error: err.message || 'An error occurred during account creation.' };
   }
 
-  return { success: true };
+  // 4. Redirect immediately to the next step (/onboarding)
+  redirect('/onboarding');
 }
 
 export async function signIn(formData: FormData) {
