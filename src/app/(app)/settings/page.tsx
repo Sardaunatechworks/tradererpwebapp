@@ -11,6 +11,7 @@ import {
   Mail,
   MapPin,
   Shield,
+  MessageSquareHeart,
 } from 'lucide-react';
 import { getBusinessSettings, updateBusinessProfile } from '@/app/actions/settings';
 import { changeUserPassword } from '@/app/actions/staff';
@@ -20,8 +21,10 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { useUIStore } from '@/stores/uiStore';
 
 export default function SettingsPage() {
+  const { setFeedbackModalOpen } = useUIStore();
   const [activeTab, setActiveTab] = useState<'business' | 'security'>('business');
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
@@ -250,6 +253,32 @@ export default function SettingsPage() {
               </form>
             </Card>
           )}
+
+          {/* Customer Centered Feedback Card */}
+          <Card className="p-6 bg-gradient-to-r from-blue-50/60 to-slate-50 border-blue-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <MessageSquareHeart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">How is TraderERP working for you?</h3>
+                  <p className="text-xs text-slate-500 mt-0.5 max-w-md leading-relaxed">
+                    We build TraderERP around your everyday trading needs. Share your ratings, suggestions, or ideas directly with our product team.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFeedbackModalOpen(true)}
+                className="bg-white hover:bg-slate-50 text-blue-700 border-blue-200 shrink-0"
+                leftIcon={<MessageSquareHeart className="w-4 h-4 text-blue-600" />}
+              >
+                Give Feedback
+              </Button>
+            </div>
+          </Card>
         </>
       )}
     </div>

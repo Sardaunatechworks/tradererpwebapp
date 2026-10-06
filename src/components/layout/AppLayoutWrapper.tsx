@@ -6,6 +6,7 @@ import Header from './Header';
 import BottomNav from './BottomNav';
 import QuickActionModal from './QuickActionModal';
 import MobileDrawer from './MobileDrawer';
+import FeedbackModal from '@/components/feedback/FeedbackModal';
 
 interface AppLayoutWrapperProps {
   businessName?: string;
@@ -38,6 +39,9 @@ export default function AppLayoutWrapper({
 
         {/* Global Quick Action Modal (+) */}
         <QuickActionModal />
+
+        {/* Global Feedback Modal */}
+        <FeedbackModal />
 
         {/* Mobile "More" Drawer */}
         <MobileDrawer businessName={businessName} />

@@ -211,3 +211,19 @@ export interface DashboardSummary {
   today_sales_count: number;
   low_stock_count: number;
 }
+
+export type FeedbackCategory = 'experience' | 'feature_request' | 'bug_report' | 'praise' | 'general';
+
+export interface AppFeedback {
+  id: string;
+  business_id?: string | null;
+  user_id?: string | null;
+  user_name?: string | null;
+  user_email?: string | null;
+  business_name?: string | null;
+  rating?: number | null;
+  category: FeedbackCategory;
+  message: string;
+  created_at: string;
+}
+

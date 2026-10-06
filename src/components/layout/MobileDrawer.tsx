@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   X,
+  MessageSquareHeart,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/uiStore';
@@ -22,7 +23,7 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-  const { mobileMoreOpen, setMobileMoreOpen } = useUIStore();
+  const { mobileMoreOpen, setMobileMoreOpen, setFeedbackModalOpen } = useUIStore();
 
   if (!mobileMoreOpen) return null;
 
@@ -90,6 +91,20 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
             );
           })}
         </nav>
+
+        {/* Share Feedback Action */}
+        <div className="px-4 py-2 border-t border-slate-100">
+          <button
+            onClick={() => {
+              setMobileMoreOpen(false);
+              setFeedbackModalOpen(true);
+            }}
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-blue-200 bg-blue-50/60 text-blue-700 font-semibold text-xs hover:bg-blue-100/70 transition-colors shadow-2xs cursor-pointer"
+          >
+            <MessageSquareHeart className="w-4 h-4 text-blue-600" />
+            <span>Share App Feedback</span>
+          </button>
+        </div>
 
         <div className="p-4 border-t border-slate-100 bg-slate-50">
           <button

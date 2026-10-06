@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   PlusCircle,
+  MessageSquareHeart,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Logo from '@/components/layout/Logo';
@@ -31,7 +32,7 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-  const { setQuickActionOpen } = useUIStore();
+  const { setQuickActionOpen, setFeedbackModalOpen } = useUIStore();
 
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('Staff');
@@ -140,6 +141,17 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
           );
         })}
       </nav>
+
+      {/* Send Feedback Button */}
+      <div className="px-4 py-2 border-t border-slate-100">
+        <button
+          onClick={() => setFeedbackModalOpen(true)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50/70 transition-colors cursor-pointer group"
+        >
+          <MessageSquareHeart className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+          <span>Send Feedback</span>
+        </button>
+      </div>
 
       {/* User Profile & Logout Footer */}
       <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
