@@ -11,6 +11,26 @@ export type MovementType =
   | 'sale_reversal'
   | 'return';
 
+export const PRODUCT_UNITS = [
+  { value: 'pcs', label: 'Pieces (pcs)' },
+  { value: 'bags', label: 'Bags (bag)' },
+  { value: 'cartons', label: 'Cartons (ctn)' },
+  { value: 'packs', label: 'Packs (pk)' },
+  { value: 'boxes', label: 'Boxes (box)' },
+  { value: 'kg', label: 'Kilograms (kg)' },
+  { value: 'litres', label: 'Litres (L)' },
+  { value: 'rolls', label: 'Rolls (roll)' },
+  { value: 'bundles', label: 'Bundles (bdl)' },
+  { value: 'pairs', label: 'Pairs (pr)' },
+  { value: 'sets', label: 'Sets (set)' },
+  { value: 'dozens', label: 'Dozens (doz)' },
+  { value: 'tins', label: 'Tins / Cans (tin)' },
+  { value: 'bottles', label: 'Bottles (btl)' },
+  { value: 'crates', label: 'Crates (crt)' },
+  { value: 'yards', label: 'Yards (yd)' },
+  { value: 'meters', label: 'Meters (m)' },
+] as const;
+
 export interface Business {
   id: string;
   name: string;
@@ -64,7 +84,6 @@ export interface Product {
   category_id?: string | null;
   name: string;
   sku?: string | null;
-  barcode?: string | null;
   description?: string | null;
   unit: string;
   purchase_price: number;

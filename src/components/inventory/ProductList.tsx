@@ -14,7 +14,7 @@ import {
   PlusCircle,
   Edit2,
 } from 'lucide-react';
-import { Product, Category } from '@/types';
+import { Product, Category, PRODUCT_UNITS } from '@/types';
 import {
   getProducts,
   getCategories,
@@ -180,7 +180,7 @@ export default function ProductList() {
           {/* Search */}
           <div className="flex-1 max-w-md">
             <Input
-              placeholder="Search product name, SKU, or barcode..."
+              placeholder="Search product name or SKU..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               leftIcon={<Search className="w-4 h-4" />}
@@ -386,29 +386,22 @@ export default function ProductList() {
               placeholder="e.g. SUG-001"
               helperText="Unique product identifier"
             />
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Category
-              </label>
-              <select
-                name="categoryId"
-                className="block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
-              >
-                <option value="">General</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Category"
+              name="categoryId"
+              options={[
+                { value: '', label: 'General' },
+                ...categories.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
-              label="Unit (e.g. pcs, bags, ctn)"
+            <Select
+              label="Unit of Measure"
               name="unit"
               defaultValue="pcs"
+              options={[...PRODUCT_UNITS]}
               required
             />
             <Input

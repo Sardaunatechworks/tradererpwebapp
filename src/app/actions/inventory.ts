@@ -109,7 +109,7 @@ export async function getProducts(options?: {
 
     if (options?.search?.trim()) {
       const s = options.search.trim();
-      query = query.or(`name.ilike.%${s}%,sku.ilike.%${s}%,barcode.ilike.%${s}%`);
+      query = query.or(`name.ilike.%${s}%,sku.ilike.%${s}%`);
     }
 
     const { data, error } = await query;
@@ -147,7 +147,6 @@ export async function createProduct(formData: FormData): Promise<{ data?: Produc
 
     const name = (formData.get('name') as string)?.trim();
     const sku = (formData.get('sku') as string)?.trim() || null;
-    const barcode = (formData.get('barcode') as string)?.trim() || null;
     const categoryId = (formData.get('categoryId') as string)?.trim() || null;
     const description = (formData.get('description') as string)?.trim() || null;
     const unit = (formData.get('unit') as string)?.trim() || 'pcs';
@@ -191,7 +190,6 @@ export async function createProduct(formData: FormData): Promise<{ data?: Produc
         category_id: categoryId,
         name,
         sku,
-        barcode,
         description,
         unit,
         purchase_price: purchasePrice,
@@ -249,7 +247,6 @@ export async function updateProduct(
 
     const name = (formData.get('name') as string)?.trim();
     const sku = (formData.get('sku') as string)?.trim() || null;
-    const barcode = (formData.get('barcode') as string)?.trim() || null;
     const categoryId = (formData.get('categoryId') as string)?.trim() || null;
     const description = (formData.get('description') as string)?.trim() || null;
     const unit = (formData.get('unit') as string)?.trim() || 'pcs';
@@ -284,7 +281,6 @@ export async function updateProduct(
       .update({
         name,
         sku,
-        barcode,
         category_id: categoryId,
         description,
         unit,

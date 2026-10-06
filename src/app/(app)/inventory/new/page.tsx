@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { createProduct, getCategories } from '@/app/actions/inventory';
-import { Category } from '@/types';
+import { Category, PRODUCT_UNITS } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 
 export default function NewProductPage() {
@@ -77,29 +78,22 @@ export default function NewProductPage() {
               placeholder="e.g. SUG-001"
               helperText="Unique identifier"
             />
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Category
-              </label>
-              <select
-                name="categoryId"
-                className="block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
-              >
-                <option value="">General</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Category"
+              name="categoryId"
+              options={[
+                { value: '', label: 'General' },
+                ...categories.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
-              label="Unit (e.g. pcs, bags)"
+            <Select
+              label="Unit of Measure"
               name="unit"
               defaultValue="pcs"
+              options={[...PRODUCT_UNITS]}
               required
             />
             <Input
