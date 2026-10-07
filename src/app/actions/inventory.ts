@@ -210,9 +210,9 @@ export async function createProduct(formData: FormData): Promise<{ data?: Produc
       await supabaseAdmin.from('inventory_movements').insert({
         business_id: businessId,
         product_id: product.id,
-        movement_type: 'opening_stock',
+        type: 'opening_stock',
         quantity: initialStock,
-        notes: 'Initial opening stock',
+        reason: 'Initial opening stock',
         created_by: user.id,
       });
     }
@@ -224,7 +224,7 @@ export async function createProduct(formData: FormData): Promise<{ data?: Produc
       action: 'create_product',
       entity_type: 'product',
       entity_id: product.id,
-      details: { name, sku, initialStock, sellingPrice },
+      metadata: { name, sku, initialStock, sellingPrice },
     });
 
     revalidatePath('/inventory');
@@ -301,7 +301,7 @@ export async function updateProduct(
       action: 'update_product',
       entity_type: 'product',
       entity_id: id,
-      details: { name, sku, purchasePrice, sellingPrice },
+      metadata: { name, sku, purchasePrice, sellingPrice },
     });
 
     revalidatePath('/inventory');
@@ -345,7 +345,7 @@ export async function toggleArchiveProduct(id: string): Promise<{ success?: bool
       action: nextStatus === 'archived' ? 'archive_product' : 'restore_product',
       entity_type: 'product',
       entity_id: id,
-      details: { name: current.name, status: nextStatus },
+      metadata: { name: current.name, status: nextStatus },
     });
 
     revalidatePath('/inventory');
@@ -404,9 +404,9 @@ export async function addStock(
     await supabaseAdmin.from('inventory_movements').insert({
       business_id: businessId,
       product_id: productId,
-      movement_type: 'stock_addition',
+      type: 'stock_addition',
       quantity: quantity,
-      notes: notes || 'Stock-in addition',
+      reason: notes || 'Stock-in addition',
       created_by: user.id,
     });
 
@@ -417,7 +417,7 @@ export async function addStock(
       action: 'add_stock',
       entity_type: 'product',
       entity_id: productId,
-      details: { added: quantity, previousStock: product.current_stock, newStock },
+      metadata: { added: quantity, previousStock: product.current_stock, newStock },
     });
 
     revalidatePath('/inventory');
@@ -477,9 +477,9 @@ export async function adjustStock(
     await supabaseAdmin.from('inventory_movements').insert({
       business_id: businessId,
       product_id: productId,
-      movement_type: 'manual_adjustment',
+      type: 'manual_adjustment',
       quantity: difference,
-      notes: `Adjustment: ${reason.trim()} (from ${product.current_stock} to ${newStock})`,
+      reason: `Adjustment: ${reason.trim()} (from ${product.current_stock} to ${newStock})`,
       created_by: user.id,
     });
 
@@ -490,7 +490,7 @@ export async function adjustStock(
       action: 'adjust_stock',
       entity_type: 'product',
       entity_id: productId,
-      details: { before: product.current_stock, after: newStock, difference, reason },
+      metadata: { before: product.current_stock, after: newStock, difference, reason },
     });
 
     revalidatePath('/inventory');
@@ -515,7 +515,12 @@ export async function getProductMovements(
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { data: (data as InventoryMovement[]) || [] };
+    const mapped = ((data as any[]) || []).map((m) => ({
+      ...m,
+      movement_type: m.type ?? m.movement_type,
+      notes: m.reason ?? m.notes,
+    }));
+    return { data: mapped as InventoryMovement[] };
   } catch (err: any) {
     return { error: err.message || 'Failed to fetch inventory movements.' };
   }

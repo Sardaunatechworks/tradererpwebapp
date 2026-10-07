@@ -53,7 +53,7 @@ export async function getDashboardData(
     // 2. Fetch Sales within period with sale_items for COGS calculation
     const { data: sales, error: salesErr } = await supabase
       .from('sales')
-      .select('*, customer:customers(id, name), items:sale_items(cost_price, quantity, subtotal)')
+      .select('*, customer:customers(id, name), items:sale_items(quantity, subtotal, product:products(purchase_price))')
       .eq('business_id', businessId)
       .eq('status', 'completed')
       .gte('created_at', startDate);
@@ -61,7 +61,7 @@ export async function getDashboardData(
     if (salesErr) throw salesErr;
 
     const salesList = (sales as any[]) || [];
-    const salesTotal = salesList.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
+    const salesTotal = salesList.reduce((acc, s) => acc + (Number(s.total ?? s.total_amount ?? 0)), 0);
     const salesCount = salesList.length;
 
     // Calculate COGS (Cost of Goods Sold)
@@ -69,7 +69,8 @@ export async function getDashboardData(
     for (const s of salesList) {
       if (s.items && Array.isArray(s.items)) {
         for (const item of s.items) {
-          totalCogs += (Number(item.cost_price) || 0) * (Number(item.quantity) || 1);
+          const cost = Number(item.product?.purchase_price) || 0;
+          totalCogs += cost * (Number(item.quantity) || 1);
         }
       }
     }
@@ -125,6 +126,11 @@ export async function getDashboardData(
       .order('created_at', { ascending: false })
       .limit(6);
 
+    const mappedRecentSales = (recentSales || []).map((s: any) => ({
+      ...s,
+      total_amount: Number(s.total ?? s.total_amount ?? 0),
+    }));
+
     // 8. Business Name & User Name
     const { data: biz } = await supabase
       .from('businesses')
@@ -145,7 +151,7 @@ export async function getDashboardData(
         estimatedProfit,
         outstandingCredit,
         lowStockProducts: lowStockProducts as Product[],
-        recentSales: (recentSales as Sale[]) || [],
+        recentSales: mappedRecentSales as Sale[],
         userName,
         businessName,
       },

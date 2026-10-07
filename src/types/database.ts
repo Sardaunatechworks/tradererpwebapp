@@ -132,6 +132,7 @@ export interface Sale {
   customer_id?: string | null;
   subtotal: number;
   discount: number;
+  total?: number;
   total_amount: number;
   amount_paid: number;
   balance_due: number;
@@ -153,7 +154,7 @@ export interface SaleItem {
   product_id: string;
   product_name_snapshot: string;
   unit_price: number;
-  cost_price: number;
+  cost_price?: number;
   quantity: number;
   subtotal: number;
   created_at: string;

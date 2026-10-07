@@ -116,7 +116,7 @@ export async function onboardBusiness(formData: FormData) {
       action: 'create_business',
       entity_type: 'business',
       entity_id: businessId,
-      details: { name: businessName, type: businessType },
+      metadata: { name: businessName, type: businessType },
     });
 
     return { success: true, businessId };

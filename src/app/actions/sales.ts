@@ -131,15 +131,16 @@ export async function createSale(params: {
         customer_id: params.customerId || null,
         subtotal: subtotal,
         discount: discount,
-        total_amount: totalAmount,
+        total: totalAmount,
         amount_paid: amountPaid,
         balance_due: balanceDue,
         payment_status: paymentStatus,
+        payment_method: params.paymentMethod,
         notes: params.notes || null,
         status: 'completed',
         sold_by: user.id,
       })
-      .select('id, sale_number, total_amount, balance_due, payment_status, created_at')
+      .select('id, sale_number, subtotal, discount, total, amount_paid, balance_due, payment_status, payment_method, status, created_at')
       .single();
 
     if (saleErr || !sale) {
@@ -154,7 +155,7 @@ export async function createSale(params: {
         product_id: item.product.id,
         product_name_snapshot: item.product.name,
         unit_price: item.unitPrice,
-        cost_price: item.product.purchase_price || 0,
+        discount: 0,
         quantity: item.quantity,
         subtotal: item.subtotal,
       });
@@ -171,11 +172,11 @@ export async function createSale(params: {
       await supabaseAdmin.from('inventory_movements').insert({
         business_id: businessId,
         product_id: item.product.id,
-        movement_type: 'sale',
+        type: 'sale',
         quantity: -item.quantity,
         reference_id: sale.id,
         reference_type: 'sale',
-        notes: `Sale #${saleNumber}`,
+        reason: `Sale #${saleNumber}`,
         created_by: user.id,
       });
     }
@@ -188,7 +189,7 @@ export async function createSale(params: {
         customer_id: params.customerId || null,
         amount: amountPaid,
         payment_method: params.paymentMethod,
-        payment_date: new Date().toISOString(),
+        reference: `Sale #${saleNumber}`,
         recorded_by: user.id,
       });
     }
@@ -199,13 +200,6 @@ export async function createSale(params: {
       business_id: businessId,
       sale_id: sale.id,
       receipt_number: receiptNumber,
-      receipt_data: {
-        saleNumber,
-        total: totalAmount,
-        amountPaid,
-        balanceDue,
-        itemsCount: verifiedItems.length,
-      },
     });
 
     // 5. Audit Log
@@ -215,13 +209,18 @@ export async function createSale(params: {
       action: 'create_sale',
       entity_type: 'sale',
       entity_id: sale.id,
-      details: { saleNumber, totalAmount, paymentStatus },
+      metadata: { saleNumber, totalAmount, paymentStatus },
     });
+
+    const createdSale = {
+      ...sale,
+      total_amount: sale.total,
+    };
 
     revalidatePath('/sales');
     revalidatePath('/inventory');
     revalidatePath('/dashboard');
-    return { data: sale };
+    return { data: createdSale };
   } catch (err: any) {
     console.error('createSale error:', err);
     return { error: err.message || 'Failed to process sale transaction.' };
@@ -262,7 +261,12 @@ export async function getSales(options?: {
     const { data, error } = await query;
     if (error) throw error;
 
-    return { data: (data as Sale[]) || [] };
+    const mapped = ((data as any[]) || []).map((s) => ({
+      ...s,
+      total_amount: s.total ?? s.total_amount ?? 0,
+    }));
+
+    return { data: mapped as Sale[] };
   } catch (err: any) {
     return { error: err.message || 'Failed to fetch sales.' };
   }
@@ -284,7 +288,13 @@ export async function getSaleById(id: string): Promise<{ data?: Sale; error?: st
       .single();
 
     if (error) throw error;
-    return { data: data as Sale };
+    const s = data as any;
+    return {
+      data: {
+        ...s,
+        total_amount: s.total ?? s.total_amount ?? 0,
+      } as Sale,
+    };
   } catch (err: any) {
     return { error: err.message || 'Sale transaction not found.' };
   }
@@ -340,11 +350,11 @@ export async function cancelSale(id: string, reason?: string): Promise<{ success
         await supabaseAdmin.from('inventory_movements').insert({
           business_id: businessId,
           product_id: item.product_id,
-          movement_type: 'sale_reversal',
+          type: 'sale_reversal',
           quantity: item.quantity,
           reference_id: sale.id,
-          reference_type: 'sale_cancellation',
-          notes: `Reversal: Sale #${sale.sale_number} cancelled`,
+          reference_type: 'sale',
+          reason: `Reversal: Sale #${sale.sale_number} cancelled`,
           created_by: user.id,
         });
       }
@@ -367,7 +377,7 @@ export async function cancelSale(id: string, reason?: string): Promise<{ success
       action: 'cancel_sale',
       entity_type: 'sale',
       entity_id: id,
-      details: { saleNumber: sale.sale_number, reason },
+      metadata: { saleNumber: sale.sale_number, reason },
     });
 
     revalidatePath('/sales');

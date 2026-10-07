@@ -160,7 +160,7 @@ export async function createExpense(formData: FormData): Promise<{ data?: Expens
       action: 'create_expense',
       entity_type: 'expense',
       entity_id: data.id,
-      details: { amount, description, paymentMethod },
+      metadata: { amount, description, paymentMethod },
     });
 
     revalidatePath('/expenses');

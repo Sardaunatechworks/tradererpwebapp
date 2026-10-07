@@ -99,7 +99,11 @@ export async function getCustomerOutstandingSales(
       .order('created_at', { ascending: true }); // oldest first (FIFO)
 
     if (error) throw error;
-    return { data: (data as Sale[]) || [] };
+    const mapped = (data || []).map((s: any) => ({
+      ...s,
+      total_amount: Number(s.total ?? s.total_amount ?? 0),
+    }));
+    return { data: mapped as Sale[] };
   } catch (err: any) {
     return { error: err.message || 'Failed to fetch customer outstanding sales.' };
   }
@@ -170,8 +174,7 @@ export async function recordCreditPayment(params: {
         customer_id: params.customerId,
         amount: applyAmount,
         payment_method: params.paymentMethod,
-        payment_date: new Date().toISOString(),
-        notes: params.notes || `Credit repayment on #${sale.sale_number}`,
+        reference: params.notes || `Credit repayment on #${sale.sale_number}`,
         recorded_by: user.id,
       });
 
@@ -185,7 +188,7 @@ export async function recordCreditPayment(params: {
       action: 'record_credit_payment',
       entity_type: 'customer',
       entity_id: params.customerId,
-      details: { amount: params.amount, paymentMethod: params.paymentMethod },
+      metadata: { amount: params.amount, paymentMethod: params.paymentMethod },
     });
 
     revalidatePath('/credit');

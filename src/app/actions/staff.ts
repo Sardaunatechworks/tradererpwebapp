@@ -124,7 +124,7 @@ export async function createStaffMember(formData: FormData): Promise<{ success?:
       action: 'create_staff',
       entity_type: 'staff',
       entity_id: newUserId,
-      details: { name, email, role: staffRole },
+      metadata: { name, email, role: staffRole },
     });
 
     revalidatePath('/staff');
@@ -181,7 +181,7 @@ export async function toggleStaffStatus(memberId: string): Promise<{ success?: b
       action: nextStatus === 'inactive' ? 'suspend_staff' : 'activate_staff',
       entity_type: 'staff',
       entity_id: member.user_id,
-      details: { memberId, status: nextStatus },
+      metadata: { memberId, status: nextStatus },
     });
 
     revalidatePath('/staff');

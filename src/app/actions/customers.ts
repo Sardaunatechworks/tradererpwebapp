@@ -140,7 +140,7 @@ export async function createCustomer(formData: FormData): Promise<{ data?: Custo
       action: 'create_customer',
       entity_type: 'customer',
       entity_id: data.id,
-      details: { name, phone },
+      metadata: { name, phone },
     });
 
     revalidatePath('/customers');

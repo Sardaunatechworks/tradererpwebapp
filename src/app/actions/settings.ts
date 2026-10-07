@@ -79,7 +79,7 @@ export async function updateBusinessProfile(formData: FormData): Promise<{ succe
       action: 'update_business_settings',
       entity_type: 'business',
       entity_id: businessId,
-      details: { name, businessType },
+      metadata: { name, businessType },
     });
 
     revalidatePath('/settings');

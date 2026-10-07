@@ -54,7 +54,10 @@ export async function getSalesReport(range: string = 'month') {
 
     if (error) throw error;
 
-    const list = sales || [];
+    const list = (sales || []).map((s: any) => ({
+      ...s,
+      total_amount: Number(s.total ?? s.total_amount ?? 0),
+    }));
     const totalSales = list.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
     const totalPaid = list.reduce((acc, s) => acc + (Number(s.amount_paid) || 0), 0);
     const totalCredit = list.reduce((acc, s) => acc + (Number(s.balance_due) || 0), 0);
@@ -199,20 +202,21 @@ export async function getPerformanceReport(range: string = 'month') {
     // Sales + COGS
     const { data: sales } = await supabase
       .from('sales')
-      .select('*, items:sale_items(cost_price, quantity)')
+      .select('*, items:sale_items(quantity, product:products(purchase_price))')
       .eq('business_id', businessId)
       .eq('status', 'completed')
       .gte('created_at', start)
       .lte('created_at', end);
 
     const salesList = (sales as any[]) || [];
-    const totalRevenue = salesList.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
+    const totalRevenue = salesList.reduce((acc, s) => acc + (Number(s.total ?? s.total_amount ?? 0)), 0);
 
     let totalCogs = 0;
     for (const s of salesList) {
       if (s.items) {
         for (const item of s.items) {
-          totalCogs += (Number(item.cost_price) || 0) * (Number(item.quantity) || 1);
+          const cost = Number(item.product?.purchase_price) || 0;
+          totalCogs += cost * (Number(item.quantity) || 1);
         }
       }
     }
