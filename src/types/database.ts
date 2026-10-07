@@ -204,6 +204,7 @@ export interface Expense {
   payment_method: PaymentMethod;
   expense_date: string;
   receipt_url?: string | null;
+  note?: string | null;
   notes?: string | null;
   recorded_by?: string | null;
   created_at: string;

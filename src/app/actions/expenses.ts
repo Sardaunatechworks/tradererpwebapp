@@ -100,7 +100,7 @@ export async function getExpenses(options?: {
 
     if (options?.search?.trim()) {
       const s = options.search.trim();
-      query = query.or(`description.ilike.%${s}%,notes.ilike.%${s}%`);
+      query = query.or(`description.ilike.%${s}%,note.ilike.%${s}%`);
     }
 
     if (options?.limit) {
@@ -110,7 +110,12 @@ export async function getExpenses(options?: {
     const { data, error } = await query;
     if (error) throw error;
 
-    return { data: (data as Expense[]) || [] };
+    const mapped = ((data as any[]) || []).map((e) => ({
+      ...e,
+      notes: e.note ?? e.notes,
+    }));
+
+    return { data: mapped as Expense[] };
   } catch (err: any) {
     return { error: err.message || 'Failed to fetch expenses.' };
   }
@@ -145,7 +150,7 @@ export async function createExpense(formData: FormData): Promise<{ data?: Expens
         description,
         payment_method: paymentMethod,
         expense_date: expenseDate,
-        notes,
+        note: notes,
         recorded_by: user.id,
       })
       .select('*, category:expense_categories(id, name)')
@@ -165,7 +170,12 @@ export async function createExpense(formData: FormData): Promise<{ data?: Expens
 
     revalidatePath('/expenses');
     revalidatePath('/dashboard');
-    return { data: data as Expense };
+    return {
+      data: {
+        ...data,
+        notes: (data as any).note ?? (data as any).notes,
+      } as Expense,
+    };
   } catch (err: any) {
     return { error: err.message || 'Failed to record expense.' };
   }

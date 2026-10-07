@@ -103,7 +103,10 @@ export async function getExpensesReport(range: string = 'month') {
 
     if (error) throw error;
 
-    const list = expenses || [];
+    const list = ((expenses as any[]) || []).map((e) => ({
+      ...e,
+      notes: e.note ?? e.notes,
+    }));
     const totalExpenses = list.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
     // Group by category
