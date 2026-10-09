@@ -19,7 +19,14 @@ export default function BusinessGuard({ children }: { children: React.ReactNode 
           return;
         }
 
+        const role = user.app_metadata?.role;
         const businessId = user.app_metadata?.business_id;
+
+        if (role === 'super_admin' && !businessId) {
+          router.replace('/admin');
+          return;
+        }
+
         if (!businessId) {
           // Check if there is any membership in business_members table
           const { data: membership } = await supabase
@@ -30,7 +37,11 @@ export default function BusinessGuard({ children }: { children: React.ReactNode 
             .maybeSingle();
 
           if (!membership?.business_id) {
-            router.replace('/onboarding');
+            if (role === 'super_admin') {
+              router.replace('/admin');
+            } else {
+              router.replace('/onboarding');
+            }
             return;
           }
         }
