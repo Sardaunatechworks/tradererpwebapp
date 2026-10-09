@@ -169,7 +169,8 @@ export default function CreditOverviewPage() {
         />
       ) : (
         <Card padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
                 <tr>
@@ -224,6 +225,51 @@ export default function CreditOverviewPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {filteredDebtors.map((debtor) => (
+              <div key={debtor.id} className="p-4 space-y-3 bg-white">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 leading-snug">{debtor.name}</h4>
+                    {debtor.address && (
+                      <p className="text-xs text-slate-400 mt-0.5">{debtor.address}</p>
+                    )}
+                    {debtor.phone && (
+                      <a
+                        href={`tel:${debtor.phone}`}
+                        className="text-xs text-blue-600 font-medium mt-1 inline-block hover:underline"
+                      >
+                        {debtor.phone}
+                      </a>
+                    )}
+                  </div>
+
+                  <span className="px-2 py-0.5 bg-slate-100 rounded-full text-[11px] font-semibold text-slate-700 shrink-0">
+                    {debtor.sales_count} {debtor.sales_count === 1 ? 'sale' : 'sales'}
+                  </span>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] uppercase font-semibold text-slate-400 block">Total Due</span>
+                    <span className="text-base font-black text-red-600">
+                      {formatCurrency(debtor.total_credit)}
+                    </span>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    onClick={() => handleOpenRepayModal(debtor)}
+                    leftIcon={<CreditCard className="w-3.5 h-3.5" />}
+                  >
+                    Repay
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       )}

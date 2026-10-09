@@ -248,7 +248,8 @@ export default function ProductList() {
         />
       ) : (
         <Card padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
                 <tr>
@@ -351,6 +352,96 @@ export default function ProductList() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {products.map((p) => {
+              const isOutOfStock = p.current_stock === 0;
+              const isLowStock = p.current_stock > 0 && p.current_stock <= p.minimum_stock;
+
+              return (
+                <div key={p.id} className="p-4 space-y-3 bg-white">
+                  {/* Top: Name, SKU, Category, and Stock Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-900 tracking-tight leading-snug">
+                        {p.name}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-700">
+                          {p.category?.name || 'General'}
+                        </span>
+                        {p.sku && <span>SKU: {p.sku}</span>}
+                        {p.unit && <span>• {p.unit}</span>}
+                      </div>
+                    </div>
+
+                    <div>
+                      {isOutOfStock ? (
+                        <Badge variant="danger" size="sm" dot>
+                          0 in stock
+                        </Badge>
+                      ) : isLowStock ? (
+                        <Badge variant="warning" size="sm" dot>
+                          {p.current_stock} left
+                        </Badge>
+                      ) : (
+                        <Badge variant="success" size="sm" dot>
+                          {p.current_stock} in stock
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Middle: Price & Margin Details */}
+                  <div className="flex items-baseline justify-between pt-1 text-xs">
+                    <div>
+                      <span className="text-[11px] text-slate-400">Selling: </span>
+                      <span className="font-extrabold text-base text-slate-900">
+                        {formatCurrency(p.selling_price)}
+                      </span>
+                    </div>
+                    <div className="text-right text-[11px] text-slate-500">
+                      Cost: <strong>{formatCurrency(p.purchase_price)}</strong>
+                    </div>
+                  </div>
+
+                  {/* Bottom: Fast Touch Action Buttons */}
+                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedProduct(p);
+                        setStockOpType('add');
+                        setStockQty('');
+                        setStockNotes('');
+                        setIsStockModalOpen(true);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Adjust Stock</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleOpenMovements(p)}
+                      className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
+                      title="Stock Movements"
+                    >
+                      <History className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleArchive(p.id)}
+                      className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 transition-colors cursor-pointer"
+                      title={p.status === 'active' ? 'Archive Product' : 'Restore'}
+                    >
+                      <Archive className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}

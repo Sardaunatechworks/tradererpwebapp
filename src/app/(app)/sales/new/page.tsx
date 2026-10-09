@@ -14,6 +14,7 @@ import {
   CreditCard,
   CheckCircle2,
   AlertCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { Product, Customer, PaymentMethod } from '@/types';
 import { getProducts } from '@/app/actions/inventory';
@@ -312,7 +313,7 @@ export default function NewSalePage() {
         </div>
 
         {/* Right Column: Cart & Payment (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
+        <div id="checkout-cart-panel" className="lg:col-span-5 space-y-4">
           <Card padding="md" className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -569,6 +570,34 @@ export default function NewSalePage() {
           }}
           sale={completedSale}
         />
+      )}
+
+      {/* Floating Mobile Cart Bar when items are selected */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-16 inset-x-3 z-30 animate-in slide-in-from-bottom-2 duration-200">
+          <button
+            type="button"
+            onClick={() => {
+              const el = document.getElementById('checkout-cart-panel');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="w-full bg-slate-900 text-white rounded-2xl p-3 shadow-2xl flex items-center justify-between border border-slate-700/80 active:scale-98 transition-all cursor-pointer ring-2 ring-white/20"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-extrabold flex items-center justify-center">
+                {cart.reduce((s, i) => s + i.quantity, 0)}
+              </span>
+              <div className="text-left">
+                <p className="text-[10px] uppercase font-semibold text-slate-300 leading-none">Cart Total</p>
+                <p className="text-sm font-black text-white mt-0.5">{formatCurrency(total)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+              <span>View Cart & Pay</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+        </div>
       )}
     </div>
   );

@@ -30,7 +30,7 @@ export default function AppLayoutWrapper({
         <Header businessName={businessName} />
 
         {/* Scrollable Page Body */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 pb-24 lg:pb-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 overflow-y-auto px-3 sm:px-8 py-4 sm:py-6 pb-28 sm:pb-32 lg:pb-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
 

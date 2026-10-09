@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'admin' | 'staff';
+export type UserRole = 'owner' | 'admin' | 'staff' | 'super_admin';
 export type EntityStatus = 'active' | 'inactive' | 'archived';
 export type PaymentStatus = 'paid' | 'partial' | 'credit';
 export type SaleStatus = 'completed' | 'cancelled';

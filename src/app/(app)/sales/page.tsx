@@ -140,7 +140,8 @@ export default function SalesHistoryPage() {
         />
       ) : (
         <Card padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
                 <tr>
@@ -257,6 +258,103 @@ export default function SalesHistoryPage() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View (Optimized touch targets & zero horizontal squish) */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {sales.map((sale) => {
+              const isCancelled = sale.status === 'cancelled';
+
+              return (
+                <div
+                  key={sale.id}
+                  className={`p-4 space-y-3 transition-colors ${
+                    isCancelled ? 'opacity-60 bg-slate-50/50' : 'bg-white'
+                  }`}
+                >
+                  {/* Top: Sale Ref, Date, and Status Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-sm text-slate-900 tracking-tight">
+                        {sale.sale_number}
+                      </span>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {formatDateTime(sale.created_at)}
+                      </p>
+                    </div>
+
+                    <div>
+                      {isCancelled ? (
+                        <Badge variant="neutral" size="sm">
+                          CANCELLED
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant={
+                            sale.payment_status === 'paid'
+                              ? 'success'
+                              : sale.payment_status === 'partial'
+                              ? 'warning'
+                              : 'danger'
+                          }
+                          size="sm"
+                          dot
+                        >
+                          {sale.payment_status.toUpperCase()}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Middle: Customer & Item Count */}
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <div className="truncate max-w-[200px]">
+                      <span className="text-slate-400">Customer: </span>
+                      <strong className="text-slate-800">
+                        {sale.customer ? sale.customer.name : 'Walk-in'}
+                      </strong>
+                    </div>
+                    <span className="text-slate-400 text-[11px]">
+                      {sale.items?.length || 0} items
+                    </span>
+                  </div>
+
+                  {/* Bottom: Financials & Action Buttons */}
+                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-base font-extrabold text-slate-900 leading-none">
+                        {formatCurrency(sale.total_amount)}
+                      </div>
+                      {sale.balance_due > 0 && (
+                        <div className="text-[11px] font-bold text-red-600 mt-1">
+                          Due: {formatCurrency(sale.balance_due)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenReceipt(sale)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Receipt</span>
+                      </button>
+
+                      {!isCancelled && (
+                        <button
+                          onClick={() => handleCancelSale(sale)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 transition-colors cursor-pointer"
+                          title="Cancel Sale"
+                        >
+                          <Ban className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}

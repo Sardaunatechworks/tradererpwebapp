@@ -33,11 +33,11 @@ export const StatCard: React.FC<StatCardProps> = ({
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+          <p className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
+          <p className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900">{value}</p>
         </div>
         {icon && (
-          <div className={`p-2.5 rounded-lg shrink-0 ${iconBg}`}>
+          <div className={`p-2 sm:p-2.5 rounded-lg shrink-0 ${iconBg}`}>
             {icon}
           </div>
         )}

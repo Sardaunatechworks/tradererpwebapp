@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -13,6 +13,7 @@ import {
   LogOut,
   X,
   MessageSquareHeart,
+  ShieldCheck,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/uiStore';
@@ -24,6 +25,17 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
   const router = useRouter();
   const supabase = createClient();
   const { mobileMoreOpen, setMobileMoreOpen, setFeedbackModalOpen } = useUIStore();
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    async function checkRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.app_metadata?.role === 'super_admin') {
+        setIsSuperAdmin(true);
+      }
+    }
+    checkRole();
+  }, [supabase]);
 
   if (!mobileMoreOpen) return null;
 
@@ -90,6 +102,17 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
               </Link>
             );
           })}
+
+          {isSuperAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setMobileMoreOpen(false)}
+              className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 shadow-2xs mt-2"
+            >
+              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+              <span>Super Admin Console</span>
+            </Link>
+          )}
         </nav>
 
         {/* Share Feedback Action */}

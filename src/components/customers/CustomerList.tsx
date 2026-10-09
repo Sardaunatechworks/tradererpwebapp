@@ -132,7 +132,8 @@ export default function CustomerList() {
         />
       ) : (
         <Card padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
                 <tr>
@@ -209,6 +210,64 @@ export default function CustomerList() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {customers.map((c) => {
+              const hasDebt = (c.outstanding_balance || 0) > 0;
+
+              return (
+                <div key={c.id} className="p-4 space-y-2.5 bg-white">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-900 leading-snug">{c.name}</h4>
+                      {c.notes && (
+                        <p className="text-xs text-slate-400 font-normal mt-0.5">{c.notes}</p>
+                      )}
+                    </div>
+                    {hasDebt ? (
+                      <Badge variant="danger" size="sm" dot>
+                        OWES
+                      </Badge>
+                    ) : (
+                      <Badge variant="success" size="sm">
+                        CLEAR
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1 text-xs text-slate-600">
+                    {c.phone && (
+                      <a
+                        href={`tel:${c.phone}`}
+                        className="flex items-center gap-1.5 text-blue-600 font-medium hover:underline"
+                      >
+                        <Phone className="w-3 h-3 text-blue-500" />
+                        <span>{c.phone}</span>
+                      </a>
+                    )}
+                    {c.address && (
+                      <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{c.address}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Balance:</span>
+                    {hasDebt ? (
+                      <span className="font-extrabold text-sm text-red-600">
+                        {formatCurrency(c.outstanding_balance)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-emerald-600 font-semibold">₦0 (Clear)</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}

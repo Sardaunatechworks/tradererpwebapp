@@ -21,7 +21,7 @@ export default function BottomNav() {
   const isStock = pathname.startsWith('/inventory');
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 lg:hidden px-2 py-1 flex items-center justify-around shadow-lg">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 lg:hidden px-2 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around shadow-lg">
       {/* Home */}
       <Link
         href="/dashboard"

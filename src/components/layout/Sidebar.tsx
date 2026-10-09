@@ -16,6 +16,7 @@ import {
   LogOut,
   PlusCircle,
   MessageSquareHeart,
+  ShieldCheck,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Logo from '@/components/layout/Logo';
@@ -140,6 +141,17 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
             </Link>
           );
         })}
+
+        {/* Super Admin Portal Link */}
+        {userRole.toLowerCase().includes('super') && (
+          <Link
+            href="/admin"
+            className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-bold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100/90 transition-colors border border-indigo-200 shadow-2xs mt-2"
+          >
+            <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Super Admin</span>
+          </Link>
+        )}
       </nav>
 
       {/* Send Feedback Button */}

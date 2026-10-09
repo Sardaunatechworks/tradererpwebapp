@@ -63,10 +63,25 @@ export async function proxy(request: NextRequest) {
   }
 
   // If user is authenticated
+  const role = user.app_metadata?.role;
+  const isSuperAdmin = role === 'super_admin';
   const businessId = user.app_metadata?.business_id;
+
+  // Protect /admin routes - must be super_admin
+  if (path.startsWith('/admin')) {
+    if (!isSuperAdmin) {
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+    return response;
+  }
 
   // If authenticated user visits public login/signup/landing
   if (isPublicRoute) {
+    if (isSuperAdmin) {
+      url.pathname = '/admin';
+      return NextResponse.redirect(url);
+    }
     if (!businessId) {
       url.pathname = '/onboarding';
     } else {
@@ -75,8 +90,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If authenticated user has no business yet and is trying to access app pages
-  if (!businessId && !path.startsWith('/onboarding') && path !== '/login') {
+  // If authenticated user has no business yet and is NOT super admin, redirect to onboarding
+  if (!businessId && !isSuperAdmin && !path.startsWith('/onboarding') && path !== '/login') {
     url.pathname = '/onboarding';
     return NextResponse.redirect(url);
   }

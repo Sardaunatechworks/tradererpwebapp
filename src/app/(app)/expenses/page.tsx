@@ -175,7 +175,8 @@ export default function ExpensesPage() {
         />
       ) : (
         <Card padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
                 <tr>
@@ -237,6 +238,50 @@ export default function ExpensesPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {expenses.map((exp) => (
+              <div key={exp.id} className="p-4 space-y-2.5 bg-white">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 leading-snug">
+                      {exp.description}
+                    </h4>
+                    {exp.notes && (
+                      <p className="text-xs text-slate-400 font-normal mt-0.5">{exp.notes}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-[10px] font-semibold text-slate-700">
+                        <Tag className="w-2.5 h-2.5 text-slate-400" />
+                        {exp.category?.name || 'General'}
+                      </span>
+                      <span>•</span>
+                      <span>{formatDate(exp.expense_date)}</span>
+                    </div>
+                  </div>
+
+                  <Badge variant="neutral" size="sm">
+                    {exp.payment_method.replace('_', ' ').toUpperCase()}
+                  </Badge>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-base font-extrabold text-slate-900">
+                    {formatCurrency(exp.amount)}
+                  </span>
+
+                  <button
+                    onClick={() => handleDeleteExpense(exp.id, exp.description)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 transition-colors cursor-pointer"
+                    title="Delete Expense"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       )}
