@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
 
 export default function BusinessGuard({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
@@ -19,10 +20,10 @@ export default function BusinessGuard({ children }: { children: React.ReactNode 
           return;
         }
 
-        const role = user.app_metadata?.role;
+        const isSuperAdmin = checkIsSuperAdmin(user);
         const businessId = user.app_metadata?.business_id;
 
-        if (role === 'super_admin' && !businessId) {
+        if (isSuperAdmin && !businessId) {
           router.replace('/admin');
           return;
         }
@@ -37,7 +38,7 @@ export default function BusinessGuard({ children }: { children: React.ReactNode 
             .maybeSingle();
 
           if (!membership?.business_id) {
-            if (role === 'super_admin') {
+            if (isSuperAdmin) {
               router.replace('/admin');
             } else {
               router.replace('/onboarding');

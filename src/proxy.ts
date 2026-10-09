@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -63,8 +64,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // If user is authenticated
-  const role = user.app_metadata?.role;
-  const isSuperAdmin = role === 'super_admin';
+  const isSuperAdmin = checkIsSuperAdmin(user);
   const businessId = user.app_metadata?.business_id;
 
   // Protect /admin routes - must be super_admin

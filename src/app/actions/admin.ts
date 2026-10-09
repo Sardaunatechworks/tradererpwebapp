@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
+import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
 
 function getAdminClient() {
   return createAdminClient(
@@ -31,8 +32,7 @@ export async function getSuperAdminContext() {
     throw new Error('Authentication required.');
   }
 
-  const role = user.app_metadata?.role;
-  if (role !== 'super_admin') {
+  if (!checkIsSuperAdmin(user)) {
     throw new Error('Unauthorized: Super administrator privilege required.');
   }
 

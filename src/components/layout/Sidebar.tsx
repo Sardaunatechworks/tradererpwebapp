@@ -21,6 +21,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import Logo from '@/components/layout/Logo';
 import { useUIStore } from '@/stores/uiStore';
+import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
 
 interface NavItem {
   name: string;
@@ -44,8 +45,9 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'User');
-        const role = user.app_metadata?.role || 'staff';
-        setUserRole(role.charAt(0).toUpperCase() + role.slice(1));
+        const isSuper = checkIsSuperAdmin(user);
+        const role = isSuper ? 'super_admin' : (user.app_metadata?.role || 'staff');
+        setUserRole(isSuper ? 'Super Admin' : (role.charAt(0).toUpperCase() + role.slice(1)));
 
         // Fetch business name if not passed
         if (!businessName) {

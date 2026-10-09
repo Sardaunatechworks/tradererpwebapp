@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
+import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
 
 export async function signUp(formData: FormData) {
   const email = formData.get('email') as string;
@@ -143,7 +144,7 @@ export async function signIn(formData: FormData) {
     return { error: error.message };
   }
 
-  if (data?.user?.app_metadata?.role === 'super_admin') {
+  if (checkIsSuperAdmin(data?.user)) {
     redirect('/admin');
   }
 

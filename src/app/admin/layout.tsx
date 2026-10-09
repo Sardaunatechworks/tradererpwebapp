@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ShieldCheck, LayoutDashboard, LogOut } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
 import { signOut } from '@/app/actions/auth';
+import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
 
 export const metadata = {
   title: 'Platform Super Admin | TraderERP',
@@ -25,8 +26,7 @@ export default async function AdminLayout({
     redirect('/login');
   }
 
-  const role = user.app_metadata?.role;
-  if (role !== 'super_admin') {
+  if (!checkIsSuperAdmin(user)) {
     redirect('/dashboard');
   }
 

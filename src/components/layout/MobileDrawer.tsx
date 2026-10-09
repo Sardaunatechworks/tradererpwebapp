@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/uiStore';
-
 import Logo from '@/components/layout/Logo';
+import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
 
 export default function MobileDrawer({ businessName }: { businessName?: string }) {
   const pathname = usePathname();
@@ -30,7 +30,7 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
   useEffect(() => {
     async function checkRole() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.app_metadata?.role === 'super_admin') {
+      if (checkIsSuperAdmin(user)) {
         setIsSuperAdmin(true);
       }
     }
