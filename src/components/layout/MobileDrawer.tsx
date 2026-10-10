@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -13,29 +13,16 @@ import {
   LogOut,
   X,
   MessageSquareHeart,
-  ShieldCheck,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useUIStore } from '@/stores/uiStore';
 import Logo from '@/components/layout/Logo';
-import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
 
 export default function MobileDrawer({ businessName }: { businessName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
   const { mobileMoreOpen, setMobileMoreOpen, setFeedbackModalOpen } = useUIStore();
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-
-  useEffect(() => {
-    async function checkRole() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (checkIsSuperAdmin(user)) {
-        setIsSuperAdmin(true);
-      }
-    }
-    checkRole();
-  }, [supabase]);
 
   if (!mobileMoreOpen) return null;
 
@@ -59,33 +46,40 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
     <div className="fixed inset-0 z-50 lg:hidden">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
         onClick={() => setMobileMoreOpen(false)}
       />
 
-      {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 w-72 bg-white shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
-        <div className="flex items-center justify-between p-4 border-b border-slate-100">
-          <div>
+      {/* Drawer Content */}
+      <div className="fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
+        {/* Header */}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <Logo iconSize="w-6 h-6" showText={true} />
-            {businessName && (
-              <p className="text-[11px] text-slate-500 font-medium truncate max-w-[180px] mt-1 pl-1">
-                {businessName}
-              </p>
-            )}
           </div>
           <button
             onClick={() => setMobileMoreOpen(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {/* Business Badge */}
+        {businessName && (
+          <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Active Business
+            </p>
+            <p className="text-xs font-bold text-slate-800 truncate">{businessName}</p>
+          </div>
+        )}
+
+        {/* Navigation Items */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {moreItems.map((item) => {
-            const Icon = item.icon;
             const active = pathname.startsWith(item.href);
+            const Icon = item.icon;
             return (
               <Link
                 key={item.href}
@@ -102,17 +96,6 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
               </Link>
             );
           })}
-
-          {isSuperAdmin && (
-            <Link
-              href="/admin"
-              onClick={() => setMobileMoreOpen(false)}
-              className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 shadow-2xs mt-2"
-            >
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span>Platform Owner Console</span>
-            </Link>
-          )}
         </nav>
 
         {/* Share Feedback Action */}
@@ -125,14 +108,15 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
             className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-blue-200 bg-blue-50/60 text-blue-700 font-semibold text-xs hover:bg-blue-100/70 transition-colors shadow-2xs cursor-pointer"
           >
             <MessageSquareHeart className="w-4 h-4 text-blue-600" />
-            <span>Share App Feedback</span>
+            <span>Send App Feedback</span>
           </button>
         </div>
 
+        {/* Footer with Logout */}
         <div className="p-4 border-t border-slate-100 bg-slate-50">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 bg-white text-red-600 font-medium text-xs hover:bg-red-50 transition-colors shadow-2xs cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-red-600 hover:bg-red-50 text-sm font-semibold transition-colors border border-red-100"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
