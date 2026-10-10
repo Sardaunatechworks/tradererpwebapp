@@ -38,6 +38,7 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
 
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('Staff');
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [bName, setBName] = useState(businessName || 'My Business');
 
   useEffect(() => {
@@ -46,8 +47,9 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
       if (user) {
         setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'User');
         const isSuper = checkIsSuperAdmin(user);
-        const role = isSuper ? 'super_admin' : (user.app_metadata?.role || 'staff');
-        setUserRole(isSuper ? 'Super Admin' : (role.charAt(0).toUpperCase() + role.slice(1)));
+        setIsPlatformAdmin(isSuper);
+        const role = user.app_metadata?.role || 'staff';
+        setUserRole(isSuper ? 'Platform Owner' : (role.charAt(0).toUpperCase() + role.slice(1)));
 
         // Fetch business name if not passed
         if (!businessName) {
@@ -144,14 +146,14 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
           );
         })}
 
-        {/* Super Admin Portal Link */}
-        {userRole.toLowerCase().includes('super') && (
+        {/* Platform Owner Console Link (visible only to platform owner) */}
+        {isPlatformAdmin && (
           <Link
             href="/admin"
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-bold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100/90 transition-colors border border-indigo-200 shadow-2xs mt-2"
           >
             <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span>Super Admin</span>
+            <span>Platform Owner Console</span>
           </Link>
         )}
       </nav>

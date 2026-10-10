@@ -1,4 +1,11 @@
-export type UserRole = 'owner' | 'admin' | 'staff' | 'super_admin';
+// Tenant-scoped business workspace roles (stored in business_members)
+export type TenantRole = 'owner' | 'admin' | 'staff';
+
+// Platform-level governance role (reserved strictly for Platform Owner)
+export type PlatformRole = 'super_admin';
+
+// Unified user role type
+export type UserRole = TenantRole | PlatformRole;
 export type EntityStatus = 'active' | 'inactive' | 'archived';
 export type PaymentStatus = 'paid' | 'partial' | 'credit';
 export type SaleStatus = 'completed' | 'cancelled';

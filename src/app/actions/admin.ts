@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
-import { checkIsSuperAdmin, PLATFORM_OWNER_EMAILS } from '@/lib/auth/superAdmin';
+import { checkIsSuperAdmin, assertPlatformOwner, PLATFORM_OWNER_EMAILS } from '@/lib/auth/superAdmin';
 
 function getAdminClient() {
   return createAdminClient(
@@ -32,9 +32,7 @@ export async function getSuperAdminContext() {
     throw new Error('Authentication required.');
   }
 
-  if (!checkIsSuperAdmin(user)) {
-    throw new Error('Unauthorized: Super administrator privilege required.');
-  }
+  assertPlatformOwner(user);
 
   const supabaseAdmin = getAdminClient();
   return { user, supabaseAdmin };

@@ -110,7 +110,7 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
               className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 shadow-2xs mt-2"
             >
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span>Super Admin Console</span>
+              <span>Platform Owner Console</span>
             </Link>
           )}
         </nav>
