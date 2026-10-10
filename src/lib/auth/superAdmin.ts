@@ -7,12 +7,6 @@ export const PLATFORM_OWNER_EMAILS = [
   'sardaunatechworks@gmail.com',
   'sardaunatech@gmail.com',
   'sardaunatechlabs@gmail.com',
-  'bgarbadutse07@gmail.com',
-  'muhammadauwalabubakar571@gmail.com',
-  'muhdauwalabubakar60@gmail.com',
-  'sardaunama8@gmail.com',
-  'sardaunamaa2008@gmail.com',
-  'sardaunatest@gmail.com'
 ];
 
 /**
