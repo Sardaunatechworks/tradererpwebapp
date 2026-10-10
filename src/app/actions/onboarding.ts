@@ -14,6 +14,12 @@ export async function onboardBusiness(formData: FormData) {
   if (!businessName) {
     return { error: 'Business name is required.' };
   }
+  if (!phone) {
+    return { error: 'Phone number is required.' };
+  }
+  if (!address) {
+    return { error: 'Office / shop address is required.' };
+  }
 
   // 1. Get current authenticated user
   const supabase = await createClient();

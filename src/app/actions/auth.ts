@@ -9,9 +9,14 @@ export async function signUp(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const name = formData.get('name') as string;
+  const phone = (formData.get('phone') as string)?.trim() || null;
 
   if (!email || !password || !name) {
     return { error: 'All fields are required.' };
+  }
+
+  if (!phone) {
+    return { error: 'Phone number is required.' };
   }
 
   // Server-side email format validation (OWASP / Input Validation)
@@ -54,6 +59,7 @@ export async function signUp(formData: FormData) {
       email_confirm: true,
       user_metadata: {
         name,
+        phone,
       },
     });
 
@@ -69,7 +75,7 @@ export async function signUp(formData: FormData) {
         email: emailTrimmed,
         password,
         options: {
-          data: { name },
+          data: { name, phone },
         },
       });
 
@@ -94,6 +100,7 @@ export async function signUp(formData: FormData) {
         id: userId,
         email: emailTrimmed,
         name: name,
+        phone: phone,
         status: 'active',
       });
     }

@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signUp, sendPasswordResetEmail } from '@/app/actions/auth';
-import { ArrowRight, CheckCircle2, Mail, Lock, User } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Mail, Lock, User, Phone } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -227,6 +227,15 @@ function LoginContent() {
             autoComplete="email"
             placeholder="you@business.com"
             leftIcon={<Mail className="w-4 h-4" />}
+          />
+
+          <Input
+            label="Phone Number"
+            name="phone"
+            type="tel"
+            required
+            placeholder="e.g. 08012345678"
+            leftIcon={<Phone className="w-4 h-4" />}
           />
 
           <Input

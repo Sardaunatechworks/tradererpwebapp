@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onboardBusiness } from '@/app/actions/onboarding';
 import { createClient } from '@/lib/supabase/client';
@@ -24,6 +24,16 @@ export default function OnboardingPage() {
   const [address, setAddress] = useState('');
   const [currency, setCurrency] = useState('NGN');
 
+  useEffect(() => {
+    async function loadUserPhone() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata?.phone && !phone) {
+        setPhone(user.user_metadata.phone);
+      }
+    }
+    loadUserPhone();
+  }, [supabase, phone]);
+
   const businessTypes = [
     { value: 'Retail Store', label: 'Retail Store (Provisions, Boutique, Mini-mart)' },
     { value: 'Wholesale / Distribution', label: 'Wholesale / Distribution' },
@@ -39,6 +49,14 @@ export default function OnboardingPage() {
     e.preventDefault();
     if (!businessName.trim()) {
       setError('Please provide your business name.');
+      return;
+    }
+    if (!phone.trim()) {
+      setError('Phone number is required.');
+      return;
+    }
+    if (!address.trim()) {
+      setError('Shop / Office Address is required.');
       return;
     }
 
@@ -104,21 +122,24 @@ export default function OnboardingPage() {
           />
 
           <Input
-            label="Business Phone Number (Optional)"
+            label="Phone Number"
             placeholder="e.g. 08012345678"
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            required
             leftIcon={<Phone className="w-4 h-4" />}
-            helperText="Used on printed sales receipts"
+            helperText="Printed on sales receipts & customer invoices"
           />
 
           <Input
-            label="Shop / Office Address (Optional)"
+            label="Shop / Office Address"
             placeholder="e.g. Shop 14, Central Market, Kano"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            required
             leftIcon={<MapPin className="w-4 h-4" />}
+            helperText="Appears on customer receipts & business records"
           />
 
           <div className="pt-2">
