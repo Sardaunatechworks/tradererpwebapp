@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
-import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
+import { checkIsSuperAdmin, PLATFORM_OWNER_EMAILS } from '@/lib/auth/superAdmin';
 
 function getAdminClient() {
   return createAdminClient(
@@ -19,7 +19,7 @@ function getAdminClient() {
 }
 
 /**
- * Ensures caller is logged in and possesses 'super_admin' role in app_metadata
+ * Ensures caller is logged in and possesses 'super_admin' privileges
  */
 export async function getSuperAdminContext() {
   const supabase = await createClient();
@@ -41,20 +41,31 @@ export async function getSuperAdminContext() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. PLATFORM SUMMARY METRICS
+// 1. PLATFORM SUMMARY METRICS & REAL TRENDS
 // ─────────────────────────────────────────────────────────────────────────────
+
+export interface RegistrationTrendItem {
+  period: string;
+  count: number;
+}
+
+export interface RoleDistribution {
+  owner: number;
+  admin: number;
+  staff: number;
+  superAdmin: number;
+}
 
 export interface SuperAdminStats {
   totalBusinesses: number;
   activeBusinesses: number;
   inactiveBusinesses: number;
   totalUsers: number;
-  totalSalesCount: number;
-  platformGmv: number;
-  totalProductsCount: number;
+  roleDistribution: RoleDistribution;
+  registrationTrends: RegistrationTrendItem[];
   totalFeedbackCount: number;
   averageRating: number;
-  newFeedbackCount: number;
+  recentActivityCount: number;
 }
 
 export async function getSuperAdminStats(): Promise<{
@@ -64,16 +75,28 @@ export async function getSuperAdminStats(): Promise<{
   try {
     const { supabaseAdmin } = await getSuperAdminContext();
 
-    // 1. Businesses counts
+    // 1. Businesses counts and registration dates
     const { data: businesses, error: bizErr } = await supabaseAdmin
       .from('businesses')
-      .select('id, status');
+      .select('id, status, created_at')
+      .order('created_at', { ascending: true });
 
     if (bizErr) throw bizErr;
 
     const totalBusinesses = businesses?.length || 0;
     const activeBusinesses = businesses?.filter((b) => b.status === 'active').length || 0;
     const inactiveBusinesses = totalBusinesses - activeBusinesses;
+
+    // Build real registration trend by month
+    const trendMap = new Map<string, number>();
+    (businesses || []).forEach((b) => {
+      const d = new Date(b.created_at);
+      const key = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      trendMap.set(key, (trendMap.get(key) || 0) + 1);
+    });
+    const registrationTrends: RegistrationTrendItem[] = Array.from(trendMap.entries()).map(
+      ([period, count]) => ({ period, count })
+    );
 
     // 2. Platform Users count
     const { count: usersCount, error: userErr } = await supabaseAdmin
@@ -82,29 +105,29 @@ export async function getSuperAdminStats(): Promise<{
 
     if (userErr) throw userErr;
 
-    // 3. Sales & Platform GMV (completed sales)
-    const { data: sales, error: salesErr } = await supabaseAdmin
-      .from('sales')
-      .select('total, status')
-      .eq('status', 'completed');
+    // 3. User distribution by role
+    const { data: members } = await supabaseAdmin
+      .from('business_members')
+      .select('role');
 
-    if (salesErr) throw salesErr;
+    const roleDistribution: RoleDistribution = {
+      owner: 0,
+      admin: 0,
+      staff: 0,
+      superAdmin: PLATFORM_OWNER_EMAILS.length,
+    };
 
-    const totalSalesCount = sales?.length || 0;
-    const platformGmv = (sales || []).reduce(
-      (sum, s) => sum + (Number(s.total) || 0),
-      0
-    );
+    (members || []).forEach((m) => {
+      const r = (m.role || '').toLowerCase();
+      if (r === 'owner') roleDistribution.owner += 1;
+      else if (r === 'admin') roleDistribution.admin += 1;
+      else if (r === 'staff') roleDistribution.staff += 1;
+    });
 
-    // 4. Products count
-    const { count: productsCount } = await supabaseAdmin
-      .from('products')
-      .select('id', { count: 'exact', head: true });
-
-    // 5. Feedback stats
+    // 4. Feedback metrics
     const { data: feedbackList } = await supabaseAdmin
       .from('app_feedback')
-      .select('rating, status');
+      .select('rating');
 
     const feedback = feedbackList || [];
     const totalFeedbackCount = feedback.length;
@@ -113,7 +136,11 @@ export async function getSuperAdminStats(): Promise<{
       ratedFeedback.length > 0
         ? ratedFeedback.reduce((sum, f) => sum + Number(f.rating), 0) / ratedFeedback.length
         : 5;
-    const newFeedbackCount = feedback.filter((f) => f.status === 'new').length;
+
+    // 5. Recent audit logs count
+    const { count: recentAuditCount } = await supabaseAdmin
+      .from('audit_logs')
+      .select('id', { count: 'exact', head: true });
 
     return {
       data: {
@@ -121,12 +148,11 @@ export async function getSuperAdminStats(): Promise<{
         activeBusinesses,
         inactiveBusinesses,
         totalUsers: usersCount || 0,
-        totalSalesCount,
-        platformGmv,
-        totalProductsCount: productsCount || 0,
+        roleDistribution,
+        registrationTrends,
         totalFeedbackCount,
         averageRating: Math.round(avgRating * 10) / 10,
-        newFeedbackCount,
+        recentActivityCount: recentAuditCount || 0,
       },
     };
   } catch (err: any) {
@@ -145,12 +171,12 @@ export interface AdminBusinessRecord {
   currency: string;
   phone?: string | null;
   email?: string | null;
+  address?: string | null;
   status: 'active' | 'inactive';
   created_at: string;
   owner_name?: string | null;
   owner_email?: string | null;
-  sales_count: number;
-  total_revenue: number;
+  member_count: number;
 }
 
 export async function getAdminBusinesses(options?: {
@@ -175,8 +201,19 @@ export async function getAdminBusinesses(options?: {
     }
 
     const { data: bizList, error } = await query;
+    
+    // Fetch member counts per business (preserving tenant data privacy by not querying sales/inventory)
+    const { data: allMembers } = await supabaseAdmin
+      .from('business_members')
+      .select('business_id');
+
+    const memberCountMap = new Map<string, number>();
+    (allMembers || []).forEach((m) => {
+      memberCountMap.set(m.business_id, (memberCountMap.get(m.business_id) || 0) + 1);
+    });
+
     if (error) {
-      // Fallback without join in case foreign key reference alias differs
+      // Fallback query without foreign key alias
       const { data: fallbackBiz, error: fbErr } = await supabaseAdmin
         .from('businesses')
         .select('*')
@@ -184,70 +221,36 @@ export async function getAdminBusinesses(options?: {
 
       if (fbErr) throw fbErr;
 
-      // Fetch sales grouped by business
-      const { data: allSales } = await supabaseAdmin
-        .from('sales')
-        .select('business_id, total, status')
-        .eq('status', 'completed');
-
-      const salesMap = new Map<string, { count: number; gmv: number }>();
-      (allSales || []).forEach((sale) => {
-        const cur = salesMap.get(sale.business_id) || { count: 0, gmv: 0 };
-        cur.count += 1;
-        cur.gmv += Number(sale.total) || 0;
-        salesMap.set(sale.business_id, cur);
-      });
-
-      const records: AdminBusinessRecord[] = (fallbackBiz || []).map((b) => {
-        const sInfo = salesMap.get(b.id) || { count: 0, gmv: 0 };
-        return {
-          id: b.id,
-          name: b.name,
-          business_type: b.business_type,
-          currency: b.currency,
-          phone: b.phone,
-          email: b.email,
-          status: b.status,
-          created_at: b.created_at,
-          sales_count: sInfo.count,
-          total_revenue: sInfo.gmv,
-        };
-      });
-
-      return { data: records };
-    }
-
-    // Fetch sales metrics to enrich records
-    const { data: allSales } = await supabaseAdmin
-      .from('sales')
-      .select('business_id, total, status')
-      .eq('status', 'completed');
-
-    const salesMap = new Map<string, { count: number; gmv: number }>();
-    (allSales || []).forEach((sale) => {
-      const cur = salesMap.get(sale.business_id) || { count: 0, gmv: 0 };
-      cur.count += 1;
-      cur.gmv += Number(sale.total) || 0;
-      salesMap.set(sale.business_id, cur);
-    });
-
-    const records: AdminBusinessRecord[] = (bizList || []).map((b: any) => {
-      const sInfo = salesMap.get(b.id) || { count: 0, gmv: 0 };
-      return {
+      const records: AdminBusinessRecord[] = (fallbackBiz || []).map((b) => ({
         id: b.id,
         name: b.name,
         business_type: b.business_type,
         currency: b.currency,
         phone: b.phone,
         email: b.email,
+        address: b.address,
         status: b.status,
         created_at: b.created_at,
-        owner_name: b.owner?.name || null,
-        owner_email: b.owner?.email || null,
-        sales_count: sInfo.count,
-        total_revenue: sInfo.gmv,
-      };
-    });
+        member_count: memberCountMap.get(b.id) || 1,
+      }));
+
+      return { data: records };
+    }
+
+    const records: AdminBusinessRecord[] = (bizList || []).map((b: any) => ({
+      id: b.id,
+      name: b.name,
+      business_type: b.business_type,
+      currency: b.currency,
+      phone: b.phone,
+      email: b.email,
+      address: b.address,
+      status: b.status,
+      created_at: b.created_at,
+      owner_name: b.owner?.name || null,
+      owner_email: b.owner?.email || null,
+      member_count: memberCountMap.get(b.id) || 1,
+    }));
 
     return { data: records };
   } catch (err: any) {
@@ -269,15 +272,19 @@ export async function toggleBusinessStatus(
 
     if (error) throw error;
 
-    // Audit log
-    await supabaseAdmin.from('audit_logs').insert({
-      business_id: businessId,
-      user_id: user.id,
-      action: newStatus === 'active' ? 'platform_activate_business' : 'platform_suspend_business',
-      entity_type: 'business',
-      entity_id: businessId,
-      metadata: { changedBy: user.email, status: newStatus },
-    });
+    // Audit log (gracefully fallback if constraint allows)
+    try {
+      await supabaseAdmin.from('audit_logs').insert({
+        business_id: businessId,
+        user_id: user.id,
+        action: newStatus === 'active' ? 'platform_activate_business' : 'platform_suspend_business',
+        entity_type: 'business',
+        entity_id: businessId,
+        metadata: { changedBy: user.email, status: newStatus },
+      });
+    } catch (logErr) {
+      console.warn('Audit log write warning:', logErr);
+    }
 
     revalidatePath('/admin');
     return { success: true };
@@ -287,7 +294,7 @@ export async function toggleBusinessStatus(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. PLATFORM USERS DIRECTORY
+// 3. PLATFORM USERS DIRECTORY & ACTIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface AdminUserRecord {
@@ -297,8 +304,8 @@ export interface AdminUserRecord {
   phone?: string | null;
   status: 'active' | 'inactive';
   created_at: string;
-  business_name?: string | null;
-  role?: string | null;
+  businesses: { id: string; name: string; role: string }[];
+  isPlatformOwner: boolean;
 }
 
 export async function getAdminUsers(options?: {
@@ -310,7 +317,7 @@ export async function getAdminUsers(options?: {
 
     let query = supabaseAdmin
       .from('users')
-      .select('*, memberships:business_members(role, status, business:businesses(name))')
+      .select('*, memberships:business_members(business_id, role, status, business:businesses(id, name))')
       .order('created_at', { ascending: false });
 
     if (options?.status && options.status !== 'all') {
@@ -326,22 +333,93 @@ export async function getAdminUsers(options?: {
     if (error) throw error;
 
     const records: AdminUserRecord[] = (users || []).map((u: any) => {
-      const activeMembership = u.memberships?.[0];
+      const businessesList = (u.memberships || [])
+        .filter((m: any) => m.business)
+        .map((m: any) => ({
+          id: m.business.id,
+          name: m.business.name,
+          role: m.role,
+        }));
+
+      const isOwner = PLATFORM_OWNER_EMAILS.includes(u.email?.toLowerCase().trim());
+
       return {
         id: u.id,
         name: u.name,
         email: u.email,
         phone: u.phone,
-        status: u.status,
+        status: u.status || 'active',
         created_at: u.created_at,
-        business_name: activeMembership?.business?.name || null,
-        role: activeMembership?.role || 'User',
+        businesses: businessesList,
+        isPlatformOwner: isOwner,
       };
     });
 
     return { data: records };
   } catch (err: any) {
     return { error: err.message || 'Failed to fetch platform users.' };
+  }
+}
+
+export async function toggleUserStatus(
+  userId: string,
+  newStatus: 'active' | 'inactive'
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const { user, supabaseAdmin } = await getSuperAdminContext();
+
+    // Guard: Prevent suspending or demoting the Platform Owner
+    const { data: targetUser } = await supabaseAdmin
+      .from('users')
+      .select('email, id')
+      .eq('id', userId)
+      .single();
+
+    if (targetUser?.email && PLATFORM_OWNER_EMAILS.includes(targetUser.email.toLowerCase().trim())) {
+      return { error: 'Protected Account: The TraderERP Platform Owner account cannot be suspended.' };
+    }
+
+    // Update status in public.users
+    const { error } = await supabaseAdmin
+      .from('users')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+
+    if (error) throw error;
+
+    // Also update memberships if any
+    await supabaseAdmin
+      .from('business_members')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('user_id', userId);
+
+    // Record in audit log
+    try {
+      const { data: userMembership } = await supabaseAdmin
+        .from('business_members')
+        .select('business_id')
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (userMembership?.business_id) {
+        await supabaseAdmin.from('audit_logs').insert({
+          business_id: userMembership.business_id,
+          user_id: user.id,
+          action: newStatus === 'active' ? 'platform_activate_user' : 'platform_suspend_user',
+          entity_type: 'user',
+          entity_id: userId,
+          metadata: { targetEmail: targetUser?.email, changedBy: user.email, status: newStatus },
+        });
+      }
+    } catch (logErr) {
+      console.warn('Audit log write warning:', logErr);
+    }
+
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message || 'Failed to update user status.' };
   }
 }
 
@@ -358,13 +436,10 @@ export interface AdminFeedbackRecord {
   rating?: number | null;
   category: string;
   message: string;
-  status: 'new' | 'reviewed' | 'archived';
-  admin_notes?: string | null;
   created_at: string;
 }
 
 export async function getAdminFeedback(options?: {
-  status?: string;
   category?: string;
 }): Promise<{ data?: AdminFeedbackRecord[]; error?: string }> {
   try {
@@ -372,12 +447,8 @@ export async function getAdminFeedback(options?: {
 
     let query = supabaseAdmin
       .from('app_feedback')
-      .select('*')
+      .select('id, business_id, user_name, user_email, business_name, rating, category, message, created_at')
       .order('created_at', { ascending: false });
-
-    if (options?.status && options.status !== 'all') {
-      query = query.eq('status', options.status);
-    }
 
     if (options?.category && options.category !== 'all') {
       query = query.eq('category', options.category);
@@ -388,34 +459,7 @@ export async function getAdminFeedback(options?: {
 
     return { data: (data as AdminFeedbackRecord[]) || [] };
   } catch (err: any) {
-    return { error: err.message || 'Failed to fetch app feedback.' };
-  }
-}
-
-export async function updateFeedbackStatus(
-  feedbackId: string,
-  status: 'new' | 'reviewed' | 'archived',
-  adminNotes?: string
-): Promise<{ success?: boolean; error?: string }> {
-  try {
-    const { supabaseAdmin } = await getSuperAdminContext();
-
-    const updatePayload: Record<string, any> = { status };
-    if (adminNotes !== undefined) {
-      updatePayload.admin_notes = adminNotes;
-    }
-
-    const { error } = await supabaseAdmin
-      .from('app_feedback')
-      .update(updatePayload)
-      .eq('id', feedbackId);
-
-    if (error) throw error;
-
-    revalidatePath('/admin');
-    return { success: true };
-  } catch (err: any) {
-    return { error: err.message || 'Failed to update feedback record.' };
+    return { error: err.message || 'Failed to fetch customer feedback.' };
   }
 }
 
@@ -434,7 +478,7 @@ export interface AdminAuditRecord {
   user?: { name: string; email: string } | null;
 }
 
-export async function getAdminAuditLogs(limit: number = 25): Promise<{
+export async function getAdminAuditLogs(limit: number = 50): Promise<{
   data?: AdminAuditRecord[];
   error?: string;
 }> {
@@ -452,5 +496,51 @@ export async function getAdminAuditLogs(limit: number = 25): Promise<{
     return { data: (data as any[]) || [] };
   } catch (err: any) {
     return { error: err.message || 'Failed to fetch audit log stream.' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. SYSTEM HEALTH & INTEGRATION MONITORING
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SystemHealthData {
+  databaseStatus: 'healthy' | 'degraded' | 'down';
+  databaseLatencyMs: number;
+  authStatus: 'healthy' | 'down';
+  environment: string;
+  platformVersion: string;
+  platformOwner: string;
+  lastChecked: string;
+}
+
+export async function getSystemHealth(): Promise<{
+  data?: SystemHealthData;
+  error?: string;
+}> {
+  try {
+    const { supabaseAdmin } = await getSuperAdminContext();
+
+    const startTime = Date.now();
+    const { error: dbErr } = await supabaseAdmin
+      .from('businesses')
+      .select('id', { count: 'exact', head: true });
+
+    const latency = Date.now() - startTime;
+
+    return {
+      data: {
+        databaseStatus: dbErr ? 'degraded' : 'healthy',
+        databaseLatencyMs: latency,
+        authStatus: 'healthy',
+        environment: process.env.NODE_ENV || 'production',
+        platformVersion: '1.2.0-mvp',
+        platformOwner: 'Sardauna Tech Lab Ltd',
+        lastChecked: new Date().toISOString(),
+      },
+    };
+  } catch (err: any) {
+    return {
+      error: err.message || 'Health check failed.',
+    };
   }
 }
