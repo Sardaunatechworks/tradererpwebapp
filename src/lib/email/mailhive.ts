@@ -1,6 +1,4 @@
 import { Mailhive } from '@mailhive/send';
-import fs from 'fs';
-import path from 'path';
 
 /**
  * Mailhive Africa Node.js SDK Email Integration
@@ -23,72 +21,64 @@ export interface SendEmailResult {
   error?: string;
 }
 
-function getMailhiveApiKey(): string | null {
-  if (process.env.MAILHIVE_API_KEY) {
-    return process.env.MAILHIVE_API_KEY.trim();
+async function resolveMailhiveConfig(): Promise<{ apiKey: string | null; fromEmail: string }> {
+  // 1. Process environment variables (e.g., Vercel / Railway / system env)
+  let apiKey = process.env.MAILHIVE_API_KEY?.trim() || null;
+  let fromEmail = process.env.MAILHIVE_DEFAULT_FROM?.trim() || null;
+
+  if (apiKey) {
+    return {
+      apiKey,
+      fromEmail: fromEmail || 'TraderERP <auth@smarttradererp.com.ng>',
+    };
   }
 
-  // Fallback: Read directly from .env.local or .env if process.env was not yet reloaded by dev server
+  // 2. Production Database fallback: Query Supabase public.platform_settings
+  // Ensures production functions seamlessly even before host env vars are redeployed
   try {
-    const cwd = process.cwd();
-    const envPaths = [
-      path.join(/* turbopackIgnore: true */ cwd, '.env.local'),
-      path.join(/* turbopackIgnore: true */ cwd, '.env'),
-    ];
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    for (const envPath of envPaths) {
-      if (fs.existsSync(envPath)) {
-        const content = fs.readFileSync(envPath, 'utf8');
-        const match = content.match(/^MAILHIVE_API_KEY\s*=\s*(.+)$/m);
-        if (match && match[1]) {
-          const key = match[1].trim().replace(/^['"]|['"]$/g, '');
-          process.env.MAILHIVE_API_KEY = key;
-          return key;
+    if (supabaseUrl && serviceRoleKey) {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'mailhive')
+        .maybeSingle();
+
+      if (data?.value?.api_key) {
+        apiKey = String(data.value.api_key).trim();
+        process.env.MAILHIVE_API_KEY = apiKey;
+        if (data.value.from) {
+          fromEmail = String(data.value.from).trim();
+          process.env.MAILHIVE_DEFAULT_FROM = fromEmail;
         }
+        return {
+          apiKey,
+          fromEmail: fromEmail || 'TraderERP <auth@smarttradererp.com.ng>',
+        };
       }
     }
   } catch (err) {
-    console.warn('[Mailhive] Could not read env fallback from disk:', err);
+    console.warn('[Mailhive] Failed to read platform_settings fallback:', err);
   }
 
-  return null;
-}
-
-function getMailhiveDefaultFrom(): string {
-  if (process.env.MAILHIVE_DEFAULT_FROM) {
-    return process.env.MAILHIVE_DEFAULT_FROM.trim();
-  }
-
-  try {
-    const cwd = process.cwd();
-    const envPaths = [
-      path.join(/* turbopackIgnore: true */ cwd, '.env.local'),
-      path.join(/* turbopackIgnore: true */ cwd, '.env'),
-    ];
-
-    for (const envPath of envPaths) {
-      if (fs.existsSync(envPath)) {
-        const content = fs.readFileSync(envPath, 'utf8');
-        const match = content.match(/^MAILHIVE_DEFAULT_FROM\s*=\s*(.+)$/m);
-        if (match && match[1]) {
-          const from = match[1].trim().replace(/^['"]|['"]$/g, '');
-          process.env.MAILHIVE_DEFAULT_FROM = from;
-          return from;
-        }
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  return 'TraderERP <hello@smarttradererp.com.ng>';
+  return {
+    apiKey,
+    fromEmail: fromEmail || 'TraderERP <auth@smarttradererp.com.ng>',
+  };
 }
 
 /**
  * Returns a Mailhive client instance if MAILHIVE_API_KEY is configured.
  */
-export function getMailhiveClient(): Mailhive | null {
-  const apiKey = getMailhiveApiKey();
+export async function getMailhiveClient(): Promise<Mailhive | null> {
+  const { apiKey } = await resolveMailhiveConfig();
   if (!apiKey) return null;
   return new Mailhive(apiKey);
 }
@@ -104,19 +94,19 @@ export async function sendMailhiveEmail({
   from,
   replyTo,
 }: SendEmailOptions): Promise<SendEmailResult> {
-  const defaultSender = getMailhiveDefaultFrom();
-  const senderEmail = from || defaultSender;
+  const { apiKey, fromEmail } = await resolveMailhiveConfig();
+  const senderEmail = from || fromEmail;
 
-  const client = getMailhiveClient();
-
-  if (!client) {
-    const errorMsg = 'MAILHIVE_API_KEY is not loaded in server environment. Please restart your dev server (npm run dev) to reload .env.local.';
+  if (!apiKey) {
+    const errorMsg = 'MAILHIVE_API_KEY is not configured in environment or database platform_settings.';
     console.error(`[Mailhive SDK] ${errorMsg}`, { to, subject, from: senderEmail });
     return {
       success: false,
       error: errorMsg,
     };
   }
+
+  const client = new Mailhive(apiKey);
 
   try {
     const res = await client.emails.send({
