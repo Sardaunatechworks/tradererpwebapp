@@ -1,4 +1,6 @@
 import { Mailhive } from '@mailhive/send';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Mailhive Africa Node.js SDK Email Integration
@@ -21,11 +23,72 @@ export interface SendEmailResult {
   error?: string;
 }
 
+function getMailhiveApiKey(): string | null {
+  if (process.env.MAILHIVE_API_KEY) {
+    return process.env.MAILHIVE_API_KEY.trim();
+  }
+
+  // Fallback: Read directly from .env.local or .env if process.env was not yet reloaded by dev server
+  try {
+    const cwd = process.cwd();
+    const envPaths = [
+      path.join(/* turbopackIgnore: true */ cwd, '.env.local'),
+      path.join(/* turbopackIgnore: true */ cwd, '.env'),
+    ];
+
+    for (const envPath of envPaths) {
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf8');
+        const match = content.match(/^MAILHIVE_API_KEY\s*=\s*(.+)$/m);
+        if (match && match[1]) {
+          const key = match[1].trim().replace(/^['"]|['"]$/g, '');
+          process.env.MAILHIVE_API_KEY = key;
+          return key;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Mailhive] Could not read env fallback from disk:', err);
+  }
+
+  return null;
+}
+
+function getMailhiveDefaultFrom(): string {
+  if (process.env.MAILHIVE_DEFAULT_FROM) {
+    return process.env.MAILHIVE_DEFAULT_FROM.trim();
+  }
+
+  try {
+    const cwd = process.cwd();
+    const envPaths = [
+      path.join(/* turbopackIgnore: true */ cwd, '.env.local'),
+      path.join(/* turbopackIgnore: true */ cwd, '.env'),
+    ];
+
+    for (const envPath of envPaths) {
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf8');
+        const match = content.match(/^MAILHIVE_DEFAULT_FROM\s*=\s*(.+)$/m);
+        if (match && match[1]) {
+          const from = match[1].trim().replace(/^['"]|['"]$/g, '');
+          process.env.MAILHIVE_DEFAULT_FROM = from;
+          return from;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return 'TraderERP <hello@smarttradererp.com.ng>';
+}
+
 /**
  * Returns a Mailhive client instance if MAILHIVE_API_KEY is configured.
  */
 export function getMailhiveClient(): Mailhive | null {
-  const apiKey = process.env.MAILHIVE_API_KEY;
+  const apiKey = getMailhiveApiKey();
   if (!apiKey) return null;
   return new Mailhive(apiKey);
 }
@@ -41,7 +104,7 @@ export async function sendMailhiveEmail({
   from,
   replyTo,
 }: SendEmailOptions): Promise<SendEmailResult> {
-  const defaultSender = process.env.MAILHIVE_DEFAULT_FROM || 'TraderERP <hello@smarttradererp.com.ng>';
+  const defaultSender = getMailhiveDefaultFrom();
   const senderEmail = from || defaultSender;
 
   const client = getMailhiveClient();
