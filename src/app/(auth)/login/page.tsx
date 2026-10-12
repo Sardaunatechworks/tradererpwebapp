@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signUp, sendPasswordResetEmail } from '@/app/actions/auth';
 import { ArrowRight, CheckCircle2, Mail, Lock, User, Phone } from 'lucide-react';
@@ -11,7 +12,8 @@ import { Input } from '@/components/ui/Input';
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
+  const tabParam = searchParams.get('tab');
+  const initialTab = tabParam === 'forgot' ? 'forgot' : tabParam === 'signup' ? 'signup' : 'signin';
   const urlMessage = searchParams.get('message');
   const urlError = searchParams.get('error');
 
@@ -164,17 +166,12 @@ function LoginContent() {
               <label className="block text-sm font-medium text-slate-700">
                 Password <span className="text-red-500">*</span>
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setTab('forgot');
-                  setError(null);
-                  setSuccessMessage(null);
-                }}
-                className="text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+              <Link
+                href="/forgot-password"
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
               >
                 Forgot Password?
-              </button>
+              </Link>
             </div>
             <Input
               name="password"
