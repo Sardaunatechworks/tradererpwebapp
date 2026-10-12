@@ -10,6 +10,7 @@
     "test-schema": "node scripts/test_db_schema.js"
   },
   "dependencies": {
+    "@mailhive/send": "^0.1.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "@tanstack/react-table": "^8.21.3",

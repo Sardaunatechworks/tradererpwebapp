@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { checkIsSuperAdmin } from '@/lib/auth/superAdmin';
+import { sendPasswordResetEmailViaMailhive } from '@/lib/email/mailhive';
 
 export async function signUp(formData: FormData) {
   const email = formData.get('email') as string;
@@ -201,10 +202,44 @@ export async function sendPasswordResetEmail(formData: FormData) {
     const host = headersList.get('host');
     const proto = headersList.get('x-forwarded-proto') || 'http';
     const siteUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
+    const redirectUrl = `${siteUrl}/api/auth/callback?next=/reset-password`;
 
+    // 1. Dispatch directly via Node.js Mailhive SDK using Supabase Admin link generation.
+    // This completely bypasses Supabase SMTP setup and sends via the @mailhive/send SDK.
+    if (process.env.MAILHIVE_API_KEY || process.env.NODE_ENV === 'development') {
+      const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+
+      if (linkErr) {
+        // If user not found in Supabase Auth, return success for security (prevent email enumeration)
+        console.warn('[Password Reset] generateLink notice:', linkErr.message);
+        return { success: true };
+      }
+
+      const resetLink = linkData?.properties?.action_link;
+      if (resetLink) {
+        const mailRes = await sendPasswordResetEmailViaMailhive({
+          to: email,
+          resetUrl: resetLink,
+        });
+
+        if (!mailRes.success && mailRes.error) {
+          return { error: mailRes.error };
+        }
+      }
+
+      return { success: true };
+    }
+
+    // 2. Fallback to Supabase SMTP if Mailhive API key is not configured
     const supabase = await createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl}/api/auth/callback?next=/reset-password`,
+      redirectTo: redirectUrl,
     });
 
     if (error) {
