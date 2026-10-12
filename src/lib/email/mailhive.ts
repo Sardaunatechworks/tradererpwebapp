@@ -27,7 +27,7 @@ export interface SendEmailResult {
 export function getMailhiveClient(): Mailhive | null {
   const apiKey = process.env.MAILHIVE_API_KEY;
   if (!apiKey) return null;
-  return new Mailhive({ apiKey });
+  return new Mailhive(apiKey);
 }
 
 /**
@@ -41,19 +41,17 @@ export async function sendMailhiveEmail({
   from,
   replyTo,
 }: SendEmailOptions): Promise<SendEmailResult> {
-  const defaultSender = process.env.MAILHIVE_DEFAULT_FROM || 'noreply@tradererp.com';
+  const defaultSender = process.env.MAILHIVE_DEFAULT_FROM || 'TraderERP <hello@smarttradererp.com.ng>';
   const senderEmail = from || defaultSender;
 
   const client = getMailhiveClient();
 
   if (!client) {
-    console.warn(
-      '[Mailhive SDK] MAILHIVE_API_KEY is not defined in environment variables. Email logged to console:',
-      { to, subject, from: senderEmail }
-    );
+    const errorMsg = 'MAILHIVE_API_KEY is not loaded in server environment. Please restart your dev server (npm run dev) to reload .env.local.';
+    console.error(`[Mailhive SDK] ${errorMsg}`, { to, subject, from: senderEmail });
     return {
-      success: true,
-      messageId: `dev_mock_${Date.now()}`,
+      success: false,
+      error: errorMsg,
     };
   }
 
