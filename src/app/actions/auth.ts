@@ -220,7 +220,12 @@ export async function sendPasswordResetEmail(formData: FormData) {
       return { success: true };
     }
 
-    const resetLink = linkData?.properties?.action_link;
+    const tokenHash = linkData?.properties?.hashed_token;
+    // Prefer direct server callback link with token_hash so verifyOtp sets session cookies server-side
+    const resetLink = tokenHash
+      ? `${siteUrl}/api/auth/callback?token_hash=${tokenHash}&type=recovery&next=/reset-password`
+      : linkData?.properties?.action_link;
+
     if (resetLink) {
       const mailRes = await sendPasswordResetEmailViaMailhive({
         to: email,
