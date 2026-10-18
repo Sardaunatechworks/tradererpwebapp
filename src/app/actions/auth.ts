@@ -185,17 +185,19 @@ export async function sendPasswordResetEmail(formData: FormData) {
       }
     );
 
-    // Bypass RLS to check if the user is suspended or restricted in the DB
+    // 1. Verify that the user account exists in the database
     const { data: dbUser, error: dbErr } = await supabaseAdmin
       .from('users')
-      .select('status')
-      .eq('email', email)
+      .select('id, email, status')
+      .ilike('email', email)
       .maybeSingle();
 
-    if (dbUser) {
-      if (dbUser.status === 'suspended' || dbUser.status === 'restricted') {
-        return { error: 'This account has been suspended or restricted. Please contact support.' };
-      }
+    if (dbErr || !dbUser) {
+      return { error: 'No account found with this email address. Please check and try again.' };
+    }
+
+    if (dbUser.status === 'suspended' || dbUser.status === 'restricted' || dbUser.status === 'inactive') {
+      return { error: 'This account has been suspended or restricted. Please contact support.' };
     }
 
     // Determine site URL dynamically from headers to handle dynamic environments
@@ -208,16 +210,15 @@ export async function sendPasswordResetEmail(formData: FormData) {
     // Generate secure recovery link using Supabase Admin (bypasses Supabase SMTP entirely)
     const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
-      email,
+      email: dbUser.email || email,
       options: {
         redirectTo: redirectUrl,
       },
     });
 
     if (linkErr) {
-      // If user not found in Supabase Auth, return success for security (prevents account enumeration)
       console.warn('[Password Reset] generateLink notice:', linkErr.message);
-      return { success: true };
+      return { error: linkErr.message || 'Unable to generate password reset link. Please try again.' };
     }
 
     const tokenHash = linkData?.properties?.hashed_token;
@@ -323,6 +324,9 @@ export async function updatePasswordWithoutOld(formData: FormData) {
     } catch (metaErr) {
       console.error('Failed to update must_change_password flags:', metaErr);
     }
+
+    // Sign out user session so that they must explicitly log in with the new password
+    await supabase.auth.signOut();
 
     return { success: true };
   } catch (err: any) {

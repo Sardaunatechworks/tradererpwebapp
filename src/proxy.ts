@@ -76,6 +76,17 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  // Allow access to /reset-password even when authenticated (for password recovery)
+  if (path === '/reset-password') {
+    return response;
+  }
+
+  // If user visits /forgot-password while authenticated, redirect to /reset-password to set new password
+  if (path === '/forgot-password') {
+    url.pathname = '/reset-password';
+    return NextResponse.redirect(url);
+  }
+
   // If authenticated user visits public login/signup/landing
   if (isPublicRoute) {
     if (isSuperAdmin) {
