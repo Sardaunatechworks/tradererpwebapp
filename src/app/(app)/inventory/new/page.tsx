@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
+import { toast } from '@/stores/toastStore';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -26,6 +27,8 @@ export default function NewProductPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
+
     setSubmitting(true);
     setError(null);
 
@@ -35,7 +38,9 @@ export default function NewProductPage() {
 
     if (res.error) {
       setError(res.error);
+      toast.error(res.error, 'Product Creation Failed');
     } else {
+      toast.success('Product added to inventory successfully!');
       router.push('/inventory');
       router.refresh();
     }

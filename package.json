@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --test tests/*.test.mjs",
     "test-schema": "node scripts/test_db_schema.js"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
+    "supabase": "^2.121.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

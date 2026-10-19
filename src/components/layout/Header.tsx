@@ -6,6 +6,7 @@ import { PlusCircle, Building2, MessageSquareHeart } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 
 import Logo from '@/components/layout/Logo';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 export default function Header({ businessName }: { businessName?: string }) {
   const { setQuickActionOpen, setFeedbackModalOpen } = useUIStore();
@@ -34,7 +35,7 @@ export default function Header({ businessName }: { businessName?: string }) {
       </div>
 
       {/* Header Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={() => setQuickActionOpen(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-colors shadow-2xs cursor-pointer"
@@ -42,6 +43,9 @@ export default function Header({ businessName }: { businessName?: string }) {
           <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
           <span>New Entry</span>
         </button>
+
+        {/* In-app Notification Bell */}
+        <NotificationBell />
 
         <button
           onClick={() => setFeedbackModalOpen(true)}

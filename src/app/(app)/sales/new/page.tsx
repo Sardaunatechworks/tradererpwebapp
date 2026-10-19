@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import ReceiptModal from '@/components/sales/ReceiptModal';
+import { toast } from '@/stores/toastStore';
 
 interface CartItem {
   product: Product;
@@ -167,6 +168,8 @@ export default function NewSalePage() {
 
   // Complete Sale
   const handleCompleteSale = async () => {
+    if (submitting) return;
+
     if (cart.length === 0) {
       setError('Please add at least one product to the sale.');
       return;
@@ -199,7 +202,9 @@ export default function NewSalePage() {
 
     if (res.error) {
       setError(res.error);
+      toast.error(res.error, 'Sale Failed');
     } else if (res.data) {
+      toast.success('Sale completed and recorded successfully!');
       const custObj = customers.find((c) => c.id === selectedCustomerId);
       setCompletedSale({
         ...res.data,

@@ -38,7 +38,9 @@ import {
   DollarSign,
   ArrowUpRight,
   Sparkles,
+  Megaphone,
 } from 'lucide-react';
+import AdminAnnouncementsManager from './AdminAnnouncementsManager';
 import {
   SuperAdminStats,
   AdminBusinessRecord,
@@ -79,6 +81,7 @@ type TabType =
   | 'users'
   | 'customers'
   | 'feedback'
+  | 'announcements'
   | 'audit'
   | 'health'
   | 'settings';
@@ -580,6 +583,7 @@ export default function AdminDashboardView({
           { id: 'users', label: 'Platform Users', icon: Users, count: stats.totalUsers },
           { id: 'customers', label: 'Customers Network', icon: UserCheck, count: stats.totalCustomers },
           { id: 'feedback', label: 'Experience Hub', icon: MessageSquareHeart, count: stats.totalFeedbackCount },
+          { id: 'announcements', label: 'Announcements', icon: Megaphone, count: null },
           { id: 'audit', label: 'Audit Compliance', icon: ShieldCheck, count: stats.recentActivityCount },
           { id: 'health', label: 'Infrastructure', icon: Server, count: null },
         ].map((tab) => {
@@ -1614,6 +1618,9 @@ export default function AdminDashboardView({
           </div>
         </div>
       )}
+
+      {/* TAB: ANNOUNCEMENTS */}
+      {activeTab === 'announcements' && <AdminAnnouncementsManager />}
 
       {/* ───────────────────────────────────────────────────────────────────── */}
       {/* 5. CONFIRMATION MODAL */}

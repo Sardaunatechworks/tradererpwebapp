@@ -9,6 +9,7 @@ import { ExpenseCategory } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { toast } from '@/stores/toastStore';
 
 export default function NewExpensePage() {
   const router = useRouter();
@@ -24,6 +25,8 @@ export default function NewExpensePage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
+
     setSubmitting(true);
     setError(null);
 
@@ -33,7 +36,9 @@ export default function NewExpensePage() {
 
     if (res.error) {
       setError(res.error);
+      toast.error(res.error, 'Expense Failed');
     } else {
+      toast.success('Expense recorded successfully!');
       router.push('/expenses');
       router.refresh();
     }
