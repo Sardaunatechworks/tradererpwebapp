@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import AuthRecoveryListener from '@/components/auth/AuthRecoveryListener';
 
 export const metadata: Metadata = {
   title: 'TraderERP — Business Management for Traders',
@@ -27,6 +28,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900">
+        <AuthRecoveryListener />
         {children}
       </body>
     </html>

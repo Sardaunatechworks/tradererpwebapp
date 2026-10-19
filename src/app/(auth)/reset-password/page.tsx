@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { updatePasswordWithoutOld } from '@/app/actions/auth';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -19,6 +20,7 @@ import PasswordInput from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 
 export default function ResetPasswordPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [hasValidSession, setHasValidSession] = useState(false);
@@ -38,31 +40,76 @@ export default function ResetPasswordPage() {
   });
 
   // Verify that an active session exists (from verifyOtp callback or client hash)
-  useEffect(() => {
-    async function verifyRecoverySession() {
-      try {
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        // Also check if there's a recovery hash fragment in URL
-        const hasHash = typeof window !== 'undefined' && window.location.hash.includes('access_token');
+  const verifyRecoverySession = useCallback(async () => {
+    try {
+      const supabase = createClient();
 
-        if (session || hasHash) {
-          setHasValidSession(true);
-        } else {
-          // Double check with getUser
-          const { data: { user } } = await supabase.auth.getUser();
-          setHasValidSession(!!user);
+      // First try getUser (authoritative, validates with server)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setHasValidSession(true);
+        setCheckingSession(false);
+        return;
+      }
+
+      // Fallback: check for hash fragment (implicit flow)
+      const hasHash = typeof window !== 'undefined' && (
+        window.location.hash.includes('access_token') ||
+        window.location.hash.includes('type=recovery')
+      );
+
+      if (hasHash) {
+        // Wait and poll briefly for Supabase client to process hash fragment into session
+        for (let i = 0; i < 3; i++) {
+          await new Promise(resolve => setTimeout(resolve, 400));
+          const { data: { user: retryUser } } = await supabase.auth.getUser();
+          if (retryUser) {
+            setHasValidSession(true);
+            setCheckingSession(false);
+            return;
+          }
         }
-      } catch (err) {
-        console.warn('Session verification notice:', err);
-      } finally {
+        // If hash contains access_token, user has recovery token
+        if (window.location.hash.includes('access_token')) {
+          setHasValidSession(true);
+          setCheckingSession(false);
+          return;
+        }
+      }
+
+      // Also check session as a fallback
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setHasValidSession(true);
+        setCheckingSession(false);
+        return;
+      }
+
+      setHasValidSession(false);
+    } catch (err) {
+      console.warn('Session verification notice:', err);
+      setHasValidSession(false);
+    } finally {
+      setCheckingSession(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Listen for auth state changes (handles implicit recovery flow with hash fragment)
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setHasValidSession(true);
         setCheckingSession(false);
       }
-    }
+    });
 
     verifyRecoverySession();
-  }, []);
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [verifyRecoverySession]);
 
   useEffect(() => {
     setRules({
@@ -91,23 +138,38 @@ export default function ResetPasswordPage() {
       const res = await updatePasswordWithoutOld(formData);
 
       if (res?.error) {
-        setError(res.error);
-        setLoading(false);
-      } else {
-        setSuccess('Your password has been reset successfully! Redirecting to sign in...');
-        
-        // Clear any client-side session state to ensure fresh login
-        try {
+        // Fallback: If server action did not find session cookies, attempt direct client update via supabase client
+        if (res.error.toLowerCase().includes('session') || res.error.toLowerCase().includes('expired')) {
           const supabase = createClient();
-          await supabase.auth.signOut();
-        } catch {
-          // ignore signout errors
-        }
+          const { error: clientErr } = await supabase.auth.updateUser({
+            password: newPassword,
+          });
 
-        setTimeout(() => {
-          window.location.href = '/login?message=' + encodeURIComponent('Password reset successful. Please sign in with your new password.');
-        }, 1200);
+          if (clientErr) {
+            setError(clientErr.message);
+            setLoading(false);
+            return;
+          }
+        } else {
+          setError(res.error);
+          setLoading(false);
+          return;
+        }
       }
+
+      setSuccess('Your password has been reset successfully! Redirecting to sign in...');
+      
+      // Clear any client-side session state to ensure fresh login
+      try {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+      } catch {
+        // ignore signout errors
+      }
+
+      setTimeout(() => {
+        window.location.href = '/login?message=' + encodeURIComponent('Password reset successful. Please sign in with your new password.');
+      }, 1200);
     } catch (err: any) {
       setError(err?.message || 'Failed to update password. Please try again.');
       setLoading(false);

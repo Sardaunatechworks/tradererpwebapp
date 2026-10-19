@@ -3,6 +3,7 @@ import {
   getSuperAdminStats,
   getAdminBusinesses,
   getAdminUsers,
+  getAdminCustomers,
   getAdminFeedback,
   getAdminAuditLogs,
   getSystemHealth,
@@ -13,20 +14,25 @@ import AdminDashboardView from '@/components/admin/AdminDashboardView';
 export default async function AdminPage() {
   const { user } = await getSuperAdminContext();
 
-  const [statsRes, bizRes, usersRes, feedbackRes, auditRes, healthRes] = await Promise.all([
-    getSuperAdminStats(),
-    getAdminBusinesses(),
-    getAdminUsers(),
-    getAdminFeedback(),
-    getAdminAuditLogs(50),
-    getSystemHealth(),
-  ]);
+  const [statsRes, bizRes, usersRes, customersRes, feedbackRes, auditRes, healthRes] =
+    await Promise.all([
+      getSuperAdminStats(),
+      getAdminBusinesses(),
+      getAdminUsers(),
+      getAdminCustomers(),
+      getAdminFeedback(),
+      getAdminAuditLogs(60),
+      getSystemHealth(),
+    ]);
 
   const defaultStats = {
     totalBusinesses: 0,
     activeBusinesses: 0,
     inactiveBusinesses: 0,
     totalUsers: 0,
+    totalCustomers: 0,
+    activeCustomers: 0,
+    totalCustomerDebt: 0,
     roleDistribution: { owner: 0, admin: 0, staff: 0, superAdmin: 1 },
     registrationTrends: [],
     totalFeedbackCount: 0,
@@ -50,6 +56,7 @@ export default async function AdminPage() {
         stats={statsRes.data || defaultStats}
         businesses={bizRes.data || []}
         users={usersRes.data || []}
+        customers={customersRes.data || []}
         feedback={feedbackRes.data || []}
         auditLogs={auditRes.data || []}
         initialHealth={healthRes.data || defaultHealth}

@@ -185,19 +185,20 @@ export async function sendPasswordResetEmail(formData: FormData) {
       }
     );
 
-    // 1. Verify that the user account exists in the database
-    const { data: dbUser, error: dbErr } = await supabaseAdmin
+    // 1. Verify that the user account exists
+    let targetEmail = email;
+
+    const { data: dbUser } = await supabaseAdmin
       .from('users')
       .select('id, email, status')
       .ilike('email', email)
       .maybeSingle();
 
-    if (dbErr || !dbUser) {
-      return { error: 'No account found with this email address. Please check and try again.' };
-    }
-
-    if (dbUser.status === 'suspended' || dbUser.status === 'restricted' || dbUser.status === 'inactive') {
-      return { error: 'This account has been suspended or restricted. Please contact support.' };
+    if (dbUser) {
+      if (dbUser.status === 'suspended' || dbUser.status === 'restricted' || dbUser.status === 'inactive') {
+        return { error: 'This account has been suspended or restricted. Please contact support.' };
+      }
+      targetEmail = dbUser.email || email;
     }
 
     // Determine site URL dynamically from headers to handle dynamic environments
@@ -205,20 +206,30 @@ export async function sendPasswordResetEmail(formData: FormData) {
     const host = headersList.get('host');
     const proto = headersList.get('x-forwarded-proto') || 'http';
     const siteUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
-    const redirectUrl = `${siteUrl}/api/auth/callback?next=/reset-password`;
+    const callbackRedirectUrl = `${siteUrl}/api/auth/callback?next=/reset-password`;
+    const directResetUrl = `${siteUrl}/reset-password`;
 
     // Generate secure recovery link using Supabase Admin (bypasses Supabase SMTP entirely)
     const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
-      email: dbUser.email || email,
+      email: targetEmail,
       options: {
-        redirectTo: redirectUrl,
+        redirectTo: directResetUrl,
       },
     });
 
     if (linkErr) {
+      const errMsg = linkErr.message.toLowerCase();
+      if (errMsg.includes('not found') || errMsg.includes('unable to find') || errMsg.includes('user not found')) {
+        return { error: 'No account found with this email address. Please check and try again.' };
+      }
       console.warn('[Password Reset] generateLink notice:', linkErr.message);
       return { error: linkErr.message || 'Unable to generate password reset link. Please try again.' };
+    }
+
+    // If neither dbUser nor linkData returned a valid user, reject
+    if (!dbUser && !linkData?.user) {
+      return { error: 'No account found with this email address. Please check and try again.' };
     }
 
     const tokenHash = linkData?.properties?.hashed_token;

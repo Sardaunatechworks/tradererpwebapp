@@ -1,20 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { sendPasswordResetEmail } from '@/app/actions/auth';
 import { Mail, ArrowLeft, ArrowRight, CheckCircle2, KeyRound, RefreshCw, AlertCircle } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get('error');
+
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(urlError || null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+
+  // If a user visits forgot-password with a recovery hash or token, forward immediately to reset-password
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash && (hash.includes('type=recovery') || hash.includes('access_token'))) {
+        window.location.replace(`/reset-password${hash}`);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -218,5 +232,13 @@ export default function ForgotPasswordPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading...</div>}>
+      <ForgotPasswordContent />
+    </Suspense>
   );
 }
