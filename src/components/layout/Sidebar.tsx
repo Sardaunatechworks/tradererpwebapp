@@ -154,19 +154,28 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
       </div>
 
       {/* User Profile & Logout Footer */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-        <div className="overflow-hidden">
-          <p className="text-xs font-semibold text-slate-900 truncate" title={userName}>
-            {userName}
-          </p>
-          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-200 text-slate-700 mt-0.5">
-            {userRole}
-          </span>
-        </div>
+      <div className="p-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-2">
+        <Link
+          href="/settings?tab=profile"
+          className="flex-1 min-w-0 flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer group"
+          title="Manage Your Profile"
+        >
+          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shrink-0">
+            {userName ? userName.charAt(0).toUpperCase() : 'U'}
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-xs font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors" title={userName}>
+              {userName}
+            </p>
+            <span className="inline-block text-[10px] px-1.5 py-0.2 rounded font-medium bg-slate-200 text-slate-700 mt-0.5">
+              {userRole}
+            </span>
+          </div>
+        </Link>
         <button
           onClick={handleLogout}
           title="Sign Out"
-          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
           aria-label="Sign Out"
         >
           <LogOut className="w-4 h-4" />

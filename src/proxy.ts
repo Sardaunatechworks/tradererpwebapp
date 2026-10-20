@@ -51,7 +51,15 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/'];
+  const publicRoutes = [
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/',
+    '/privacy',
+    '/terms',
+  ];
   const isPublicRoute = publicRoutes.includes(path);
 
   // If user is not authenticated
@@ -76,8 +84,13 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // Allow access to /reset-password and /forgot-password even when authenticated (for password recovery)
-  if (path === '/reset-password' || path === '/forgot-password') {
+  // Allow access to /privacy, /terms, /reset-password, and /forgot-password even when authenticated
+  if (
+    path === '/privacy' ||
+    path === '/terms' ||
+    path === '/reset-password' ||
+    path === '/forgot-password'
+  ) {
     return response;
   }
 

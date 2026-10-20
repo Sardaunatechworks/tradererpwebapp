@@ -255,3 +255,42 @@ export interface AppFeedback {
   created_at: string;
 }
 
+export type ConsentType = 'terms_and_privacy' | 'marketing_emails' | 'analytics_cookies';
+
+export interface UserConsent {
+  id: string;
+  user_id: string;
+  consent_type: ConsentType;
+  policy_version: string;
+  granted: boolean;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DeletionRequestStatus = 'pending' | 'processing' | 'completed' | 'cancelled' | 'rejected';
+
+export interface AccountDeletionRequest {
+  id: string;
+  user_id: string;
+  business_id?: string | null;
+  user_email: string;
+  user_role: string;
+  reason?: string | null;
+  status: DeletionRequestStatus;
+  resolution_notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserPreferences {
+  id: string;
+  user_id: string;
+  tour_completed: boolean;
+  tour_dismissed_at?: string | null;
+  tour_completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+

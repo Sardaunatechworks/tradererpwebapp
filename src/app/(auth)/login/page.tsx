@@ -52,6 +52,13 @@ function LoginContent() {
       return;
     }
 
+    const termsConsent = formData.get('termsConsent');
+    if (!termsConsent) {
+      setError('Please review and accept the Terms of Service and Privacy Policy.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await signUp(formData);
       if (res?.error) {
@@ -254,6 +261,50 @@ function LoginContent() {
             placeholder="Re-enter password"
             leftIcon={<Lock className="w-4 h-4" />}
           />
+
+          {/* Privacy Notice & Consent Section */}
+          <div className="space-y-3 pt-2 border-t border-slate-100">
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs text-slate-600 leading-relaxed">
+              <span className="font-semibold text-slate-800">Privacy Notice: </span>
+              We collect your name, contact, and business details solely to set up your workspace and secure your operations. We do not sell your personal or business data. Read our{' '}
+              <Link href="/privacy" target="_blank" className="text-blue-600 underline font-medium">
+                Privacy Policy
+              </Link>.
+            </div>
+
+            {/* Mandatory Terms & Privacy Checkbox (Unselected by default) */}
+            <label className="flex items-start gap-2.5 text-xs text-slate-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                name="termsConsent"
+                required
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+              />
+              <span>
+                I have read and agree to the{' '}
+                <Link href="/terms" target="_blank" className="font-semibold text-slate-900 underline hover:text-blue-600">
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link href="/privacy" target="_blank" className="font-semibold text-slate-900 underline hover:text-blue-600">
+                  Privacy Policy
+                </Link>
+                . <span className="text-red-500">*</span>
+              </span>
+            </label>
+
+            {/* Separate Optional Marketing Consent (Unselected by default, not required) */}
+            <label className="flex items-start gap-2.5 text-xs text-slate-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                name="marketingConsent"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+              />
+              <span>
+                Send me practical retail trade tips, inventory guides, and product updates via email (optional).
+              </span>
+            </label>
+          </div>
 
           <div className="pt-2">
             <Button

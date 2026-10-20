@@ -20,6 +20,13 @@ export async function signUp(formData: FormData) {
     return { error: 'Phone number is required.' };
   }
 
+  // Mandatory Terms & Privacy consent check
+  const termsConsent = formData.get('termsConsent');
+  if (termsConsent !== 'on' && termsConsent !== 'true') {
+    return { error: 'You must review and agree to the Terms of Service and Privacy Policy to create an account.' };
+  }
+  const marketingConsent = formData.get('marketingConsent') === 'on' || formData.get('marketingConsent') === 'true';
+
   // Server-side email format validation (OWASP / Input Validation)
   const emailTrimmed = email.trim().toLowerCase();
   const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -95,7 +102,7 @@ export async function signUp(formData: FormData) {
       userId = adminUser.user.id;
     }
 
-    // 2. Ensure public.users profile exists
+    // 2. Ensure public.users profile exists and record consent
     if (userId) {
       await supabaseAdmin.from('users').upsert({
         id: userId,
@@ -104,6 +111,37 @@ export async function signUp(formData: FormData) {
         phone: phone,
         status: 'active',
       });
+
+      // 2b. Record explicit consent records
+      try {
+        const reqHeaders = await headers();
+        const userAgent = (reqHeaders.get('user-agent') || 'browser').slice(0, 255);
+        const ip = (reqHeaders.get('x-forwarded-for') || 'direct').slice(0, 45);
+
+        await supabaseAdmin.from('user_consents').upsert(
+          [
+            {
+              user_id: userId,
+              consent_type: 'terms_and_privacy',
+              policy_version: 'v1.0',
+              granted: true,
+              ip_address: ip,
+              user_agent: userAgent,
+            },
+            {
+              user_id: userId,
+              consent_type: 'marketing_emails',
+              policy_version: 'v1.0',
+              granted: marketingConsent,
+              ip_address: ip,
+              user_agent: userAgent,
+            },
+          ],
+          { onConflict: 'user_id,consent_type' }
+        );
+      } catch (consentErr) {
+        console.error('Failed to log consent record:', consentErr);
+      }
     }
 
     // 3. Immediately sign in to establish active session cookies

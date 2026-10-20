@@ -6,45 +6,52 @@ import {
   ArrowRight,
   Package,
   ShoppingCart,
-  Users,
   Receipt,
-  BarChart3,
-  CheckCircle2,
-  TrendingUp,
-  ShieldCheck,
   CreditCard,
+  CheckCircle2,
+  ShieldCheck,
+  TrendingUp,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
+export const metadata = {
+  title: 'TraderERP — Run Your Business With More Confidence',
+  description:
+    'Track your sales, stock, expenses, and customer debts in one place. Built specifically for Nigerian retailers and small business owners.',
+};
+
 export default async function LandingPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
   const features = [
     {
-      title: 'Fast Sales & Receipts',
-      desc: 'Process sales in seconds, handle cash, bank transfers, or credit, and print itemized customer receipts immediately.',
+      title: 'Fast Checkout & Receipts',
+      desc: 'Record customer sales in seconds, handle cash, bank transfers, or credit, and issue clean printed receipts immediately.',
       icon: ShoppingCart,
-      badge: 'Point of Sale',
+      badge: 'Sales POS',
     },
     {
-      title: 'Real-Time Inventory',
-      desc: 'Keep accurate counts of every product in your store, receive low-stock alerts, and track every stock-in and adjustment.',
+      title: 'Live Stock Tracking',
+      desc: 'Always know the exact quantity of products in your shop. Receive low-stock warnings before popular items run out.',
       icon: Package,
-      badge: 'Stock Control',
+      badge: 'Inventory',
     },
     {
       title: 'Operating Expenses',
-      desc: 'Categorize rent, fuel, transport, and staff wages so you always know your true estimated profit at the end of the day.',
+      desc: 'Track shop rent, generator fuel, transport, and staff wages so you always know your true estimated profit at the end of the day.',
       icon: Receipt,
-      badge: 'Expense Tracking',
+      badge: 'Expenses',
     },
     {
-      title: 'Customer Credit Ledger',
-      desc: 'Never lose track of debtors again. See exact balances, record partial payments, and reconcile accounts in one click.',
+      title: 'Customer Debts & Credit',
+      desc: 'Never forget who owes you money. View exact debtor balances, record installment payments, and keep customer accounts straight.',
       icon: CreditCard,
-      badge: 'Debt Reconciliation',
+      badge: 'Credit Ledger',
     },
   ];
 
@@ -84,27 +91,37 @@ export default async function LandingPage() {
         <section className="py-16 sm:py-24 px-4 sm:px-8 max-w-5xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Built specifically for Nigerian traders & retail merchants</span>
+            <span>Built for Nigerian retailers &amp; small business owners</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight sm:leading-none">
-            Run your store with <br className="hidden sm:inline" />
+            Run Your Business With{' '}
             <span className="text-slate-900 underline decoration-blue-500 decoration-4 underline-offset-4">
-              complete financial clarity.
+              More Confidence.
             </span>
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            Stop losing money to forgotten customer credit, untracked inventory shortages, and uncalculated store expenses. TraderERP gives you an all-in-one workspace designed for real trade.
+            Track your sales, stock, expenses, and customer debts in one place. TraderERP helps you keep better records, understand your business performance, and make more informed decisions.
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link href={isLoggedIn ? '/dashboard' : '/login?tab=signup'} className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto px-8" rightIcon={<ArrowRight className="w-4 h-4" />}>
+            <Link
+              href={isLoggedIn ? '/dashboard' : '/login?tab=signup'}
+              className="w-full sm:w-auto"
+            >
+              <Button
+                size="lg"
+                className="w-full sm:w-auto px-8"
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+              >
                 {isLoggedIn ? 'Open Your Workspace' : 'Start Free Business Account'}
               </Button>
             </Link>
-            <Link href={isLoggedIn ? '/sales/new' : '/login'} className="w-full sm:w-auto">
+            <Link
+              href={isLoggedIn ? '/sales/new' : '/login'}
+              className="w-full sm:w-auto"
+            >
               <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
                 {isLoggedIn ? 'Record New Sale' : 'Sign In to Account'}
               </Button>
@@ -115,15 +132,15 @@ export default async function LandingPage() {
           <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 font-medium">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Multi-item quick checkout</span>
+              <span>Quick checkout &amp; receipts</span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>FIFO credit debt tracking</span>
+              <span>Easy debtor debt tracking</span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Real-time estimated profit</span>
+              <span>Daily estimated profit calculation</span>
             </div>
           </div>
         </section>
@@ -132,10 +149,10 @@ export default async function LandingPage() {
         <section className="py-12 px-4 sm:px-8 max-w-6xl mx-auto">
           <div className="text-center space-y-2 mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              Everything your trade operations require
+              Everything your store operations require
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              No complicated accounting jargon. Just fast, dependable everyday tools.
+              Straightforward, practical tools designed for everyday trade without confusing accounting terms.
             </p>
           </div>
 
@@ -164,13 +181,53 @@ export default async function LandingPage() {
             })}
           </div>
         </section>
+
+        {/* Transparency & Privacy Banner */}
+        <section className="py-12 px-4 sm:px-8 max-w-5xl mx-auto">
+          <div className="p-6 sm:p-8 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Your Data, Your Ownership</span>
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Transparent privacy and full record control
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                We never sell your customer records or trade details. You can download an archive of your personal data or close your account at any time directly from Settings.
+              </p>
+            </div>
+            <Link href="/privacy" className="shrink-0">
+              <Button variant="outline" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
+                Read Privacy Policy
+              </Button>
+            </Link>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-8 px-4 sm:px-8 text-center text-xs text-slate-400">
+      <footer className="border-t border-slate-200 bg-white py-8 px-4 sm:px-8 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© {new Date().getFullYear()} TraderERP. All rights reserved.</p>
-          <p>Simple, professional business ERP for modern traders.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/terms" className="hover:text-slate-900 transition-colors">
+              Terms of Service
+            </Link>
+            <span>•</span>
+            <Link href="/privacy" className="hover:text-slate-900 transition-colors">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <a
+              href="https://www.smarttradererp.com.ng"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              smarttradererp.com.ng
+            </a>
+          </div>
         </div>
       </footer>
     </div>
