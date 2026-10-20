@@ -67,13 +67,13 @@ export default function DashboardOverview() {
         </div>
 
         {/* Period Pills */}
-        <div className="flex border border-slate-200 rounded-lg p-0.5 bg-slate-100 text-xs shrink-0 self-start sm:self-auto">
+        <div className="flex w-full sm:w-auto border border-slate-200 rounded-lg p-0.5 bg-slate-100 text-xs shrink-0">
           {(['today', 'week', 'month'] as const).map((p) => (
             <button
               key={p}
               type="button"
               onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 rounded-md font-semibold transition-colors cursor-pointer ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-md font-semibold text-center transition-colors cursor-pointer ${
                 period === p
                   ? 'bg-white text-slate-900 shadow-2xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -86,23 +86,23 @@ export default function DashboardOverview() {
       </div>
 
       {/* Quick Action Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <Link href="/sales/new">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar touch-pan-x">
+        <Link href="/sales/new" className="shrink-0">
           <Button size="sm" leftIcon={<ShoppingCart className="w-3.5 h-3.5" />}>
             New Sale
           </Button>
         </Link>
-        <Link href="/inventory/new">
+        <Link href="/inventory/new" className="shrink-0">
           <Button variant="secondary" size="sm" leftIcon={<Package className="w-3.5 h-3.5" />}>
             Add Product
           </Button>
         </Link>
-        <Link href="/expenses/new">
+        <Link href="/expenses/new" className="shrink-0">
           <Button variant="secondary" size="sm" leftIcon={<Receipt className="w-3.5 h-3.5" />}>
             Add Expense
           </Button>
         </Link>
-        <Link href="/credit">
+        <Link href="/credit" className="shrink-0">
           <Button variant="outline" size="sm" leftIcon={<CreditCard className="w-3.5 h-3.5" />}>
             Credit Ledger
           </Button>
@@ -113,7 +113,7 @@ export default function DashboardOverview() {
       {loading && !data ? (
         <LoadingState message="Calculating business KPIs..." />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Card 1: Sales */}
           <StatCard
             title={`${periodLabels[period]}'s Sales`}
@@ -177,18 +177,18 @@ export default function DashboardOverview() {
                 {data?.recentSales?.map((sale) => (
                   <div
                     key={sale.id}
-                    className="py-3 flex items-center justify-between hover:bg-slate-50/60 px-2 rounded-lg transition-colors"
+                    className="py-3 flex items-center justify-between hover:bg-slate-50/60 px-2 rounded-lg transition-colors gap-2"
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-slate-900">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <span className="font-bold text-xs text-slate-900 shrink-0">
                           #{sale.sale_number}
                         </span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-slate-500 truncate">
                           {sale.customer?.name || 'Walk-in Customer'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">
                         {formatDateTime(sale.created_at)}
                       </p>
                     </div>

@@ -94,7 +94,7 @@ export default function AuthLayout({
       </div>
 
       {/* Right Column: Auth Form Viewport */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:p-12">
         <div className="w-full max-w-md">
           {children}
         </div>

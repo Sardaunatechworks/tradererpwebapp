@@ -270,7 +270,7 @@ export default function NewSalePage() {
           </Card>
 
           {/* Product grid / list */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[550px] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:max-h-[600px] lg:overflow-y-auto pr-1">
             {filteredProducts.map((p) => {
               const inCart = cart.find((i) => i.product.id === p.id);
               const isOut = p.current_stock <= 0;
@@ -347,9 +347,9 @@ export default function NewSalePage() {
                 {cart.map((item) => (
                   <div
                     key={item.product.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/50"
+                    className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/50 gap-2"
                   >
-                    <div className="overflow-hidden max-w-[160px]">
+                    <div className="min-w-0 flex-1 pr-1">
                       <p className="font-semibold text-xs text-slate-900 truncate">
                         {item.product.name}
                       </p>
@@ -358,30 +358,35 @@ export default function NewSalePage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
+                        type="button"
                         onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                        className="p-1 rounded bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center rounded-md bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 active:scale-95 transition-transform touch-manipulation cursor-pointer"
+                        aria-label="Decrease quantity"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-3.5 h-3.5" />
                       </button>
                       <span className="w-7 text-center font-bold text-xs text-slate-800">
                         {item.quantity}
                       </span>
                       <button
+                        type="button"
                         onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                         disabled={item.quantity >= item.product.current_stock}
-                        className="p-1 rounded bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 disabled:opacity-40 cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center rounded-md bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 disabled:opacity-40 active:scale-95 transition-transform touch-manipulation cursor-pointer"
+                        aria-label="Increase quantity"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <p className="font-bold text-xs text-slate-900">
                         {formatCurrency(item.unitPrice * item.quantity)}
                       </p>
                       <button
+                        type="button"
                         onClick={() => removeFromCart(item.product.id)}
                         className="text-[10px] text-slate-400 hover:text-red-600 cursor-pointer"
                       >
@@ -429,6 +434,7 @@ export default function NewSalePage() {
                 <span className="text-slate-600">Discount (₦):</span>
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   value={discount}
                   onChange={(e) => setDiscount(e.target.value)}
@@ -486,6 +492,7 @@ export default function NewSalePage() {
               </div>
               <input
                 type="number"
+                inputMode="decimal"
                 min="0"
                 value={amountPaid}
                 onChange={(e) => setAmountPaid(e.target.value)}
@@ -579,7 +586,7 @@ export default function NewSalePage() {
 
       {/* Floating Mobile Cart Bar when items are selected */}
       {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-16 inset-x-3 z-30 animate-in slide-in-from-bottom-2 duration-200">
+        <div className="lg:hidden fixed bottom-16 md:bottom-6 inset-x-3 z-30 animate-in slide-in-from-bottom-2 duration-200">
           <button
             type="button"
             onClick={() => {

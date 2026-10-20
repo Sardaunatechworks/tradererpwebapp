@@ -96,7 +96,8 @@ export default function StaffList() {
         <LoadingState message="Loading staff directory..." />
       ) : (
         <Card padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500">
                 <tr>
@@ -174,6 +175,69 @@ export default function StaffList() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {members.map((m) => {
+              const isOwner = m.role === 'owner';
+              const isActive = m.status === 'active';
+
+              return (
+                <div key={m.id} className="p-4 space-y-3 bg-white">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-slate-900 leading-snug truncate">
+                        {m.user?.name || 'User'}
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">{m.user?.email}</p>
+                    </div>
+
+                    <Badge variant={isActive ? 'success' : 'danger'} size="sm" dot>
+                      {isActive ? 'ACTIVE' : 'SUSPENDED'}
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${
+                        isOwner
+                          ? 'bg-slate-900 text-white'
+                          : m.role === 'admin'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      <Shield className="w-3 h-3" />
+                      {m.role}
+                    </span>
+
+                    {m.user?.phone && (
+                      <span className="text-slate-500 font-medium">
+                        Tel: <strong className="text-slate-800">{m.user.phone}</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-400">
+                    <span>Joined: {formatDate(m.created_at)}</span>
+
+                    {!isOwner && (
+                      <button
+                        onClick={() => handleToggleStatus(m)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
+                          isActive
+                            ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                        }`}
+                      >
+                        {isActive ? 'Suspend' : 'Activate'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}

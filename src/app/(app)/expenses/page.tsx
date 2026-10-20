@@ -126,9 +126,11 @@ export default function ExpensesPage() {
 
       {/* Filter and Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card padding="md" className="sm:col-span-1 border-l-4 border-l-amber-500">
+        <Card padding="md" className="sm:col-span-1 border-l-4 border-l-amber-500 min-w-0">
           <p className="text-xs font-semibold uppercase text-slate-500">Total Filtered Expenses</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(totalExpenses)}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1 truncate" title={formatCurrency(totalExpenses)}>
+            {formatCurrency(totalExpenses)}
+          </p>
           <p className="text-xs text-slate-400 mt-1">{expenses.length} recorded entries</p>
         </Card>
 
@@ -145,7 +147,7 @@ export default function ExpensesPage() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer"
+              className="bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer w-full sm:w-auto"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (

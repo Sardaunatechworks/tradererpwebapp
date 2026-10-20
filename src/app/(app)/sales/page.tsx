@@ -104,13 +104,13 @@ export default function SalesHistoryPage() {
             />
           </div>
 
-          <div className="flex border border-slate-200 rounded-lg p-0.5 bg-slate-100 text-xs">
+          <div className="flex border border-slate-200 rounded-lg p-0.5 bg-slate-100 text-xs overflow-x-auto no-scrollbar w-full sm:w-auto">
             {['all', 'paid', 'partial', 'credit'].map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-md font-semibold uppercase tracking-wider transition-colors cursor-pointer ${
+                className={`flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 rounded-md font-semibold uppercase tracking-wider transition-colors cursor-pointer text-center text-[11px] sm:text-xs whitespace-nowrap ${
                   statusFilter === st
                     ? 'bg-white text-slate-900 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'

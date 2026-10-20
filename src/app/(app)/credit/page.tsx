@@ -119,11 +119,11 @@ export default function CreditOverviewPage() {
 
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card padding="md" className="border-l-4 border-l-red-600">
+        <Card padding="md" className="border-l-4 border-l-red-600 min-w-0">
           <p className="text-xs font-semibold uppercase text-slate-500">
             Total Outstanding Credit
           </p>
-          <p className="text-3xl font-extrabold text-red-600 mt-1">
+          <p className="text-2xl sm:text-3xl font-extrabold text-red-600 mt-1 truncate" title={formatCurrency(data?.totalOutstanding || 0)}>
             {formatCurrency(data?.totalOutstanding || 0)}
           </p>
           <p className="text-xs text-slate-400 mt-1">
@@ -131,11 +131,11 @@ export default function CreditOverviewPage() {
           </p>
         </Card>
 
-        <Card padding="md" className="border-l-4 border-l-amber-500">
+        <Card padding="md" className="border-l-4 border-l-amber-500 min-w-0">
           <p className="text-xs font-semibold uppercase text-slate-500">
             Active Debtors
           </p>
-          <p className="text-3xl font-extrabold text-slate-900 mt-1">
+          <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 truncate">
             {data?.debtorsCount || 0}
           </p>
           <p className="text-xs text-slate-400 mt-1">Customers with pending credit balances</p>

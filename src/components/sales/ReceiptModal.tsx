@@ -47,7 +47,7 @@ export default function ReceiptModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity print:hidden"
@@ -55,7 +55,7 @@ export default function ReceiptModal({
       />
 
       {/* Dialog */}
-      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 z-10 animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 sm:p-6 z-10 animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
         {/* Modal Controls (hidden on print) */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 print:hidden">
           <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-xs">
@@ -71,7 +71,7 @@ export default function ReceiptModal({
         </div>
 
         {/* Printable Receipt Paper Container */}
-        <div id="printable-receipt" className="p-4 bg-white overflow-y-auto font-mono text-xs text-slate-800 space-y-3">
+        <div id="printable-receipt" className="p-2 sm:p-4 bg-white overflow-y-auto font-mono text-xs text-slate-800 space-y-3">
           {/* Header */}
           <div className="text-center space-y-0.5 border-b border-dashed border-slate-300 pb-3">
             <h2 className="text-base font-bold uppercase tracking-wider text-slate-900 font-sans">

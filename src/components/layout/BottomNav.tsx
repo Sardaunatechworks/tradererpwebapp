@@ -25,7 +25,7 @@ export default function BottomNav() {
       {/* Home */}
       <Link
         href="/dashboard"
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium transition-colors ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 rounded-lg text-[10px] font-medium transition-colors min-w-[44px] ${
           isHome ? 'text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-800'
         }`}
       >
@@ -36,7 +36,7 @@ export default function BottomNav() {
       {/* Sales */}
       <Link
         href="/sales"
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium transition-colors ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 rounded-lg text-[10px] font-medium transition-colors min-w-[44px] ${
           isSales ? 'text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-800'
         }`}
       >
@@ -58,7 +58,7 @@ export default function BottomNav() {
       {/* Stock */}
       <Link
         href="/inventory"
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium transition-colors ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 rounded-lg text-[10px] font-medium transition-colors min-w-[44px] ${
           isStock ? 'text-slate-900 font-bold' : 'text-slate-500 hover:text-slate-800'
         }`}
       >
@@ -69,7 +69,7 @@ export default function BottomNav() {
       {/* More Drawer */}
       <button
         onClick={() => setMobileMoreOpen(true)}
-        className="flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium text-slate-500 hover:text-slate-800 cursor-pointer"
+        className="flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 rounded-lg text-[10px] font-medium text-slate-500 hover:text-slate-800 cursor-pointer min-w-[44px]"
         aria-label="More Navigation"
       >
         <Menu className="w-5 h-5 mb-0.5 text-slate-400" />

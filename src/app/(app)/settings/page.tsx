@@ -89,30 +89,30 @@ export default function SettingsPage() {
       />
 
       {/* Settings Navigation Tabs */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200 overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('business')}
-          className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 py-2.5 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
             activeTab === 'business'
               ? 'border-slate-900 text-slate-900'
               : 'border-transparent text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Building2 className="w-4 h-4" />
+          <Building2 className="w-4 h-4 shrink-0" />
           <span>Business Profile</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 py-3 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 py-2.5 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
             activeTab === 'security'
               ? 'border-slate-900 text-slate-900'
               : 'border-transparent text-slate-400 hover:text-slate-700'
           }`}
         >
-          <Lock className="w-4 h-4" />
+          <Lock className="w-4 h-4 shrink-0" />
           <span>Security & Password</span>
         </button>
       </div>

@@ -88,7 +88,7 @@ function LoginContent() {
   };
 
   return (
-    <div className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-xl p-6 sm:p-8 space-y-6">
+    <div className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-xl p-4 sm:p-8 space-y-6">
       {/* Mobile Logo */}
       <div className="flex flex-col items-center text-center lg:hidden">
         <Logo iconSize="w-10 h-10" showText={true} />

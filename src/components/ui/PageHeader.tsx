@@ -16,13 +16,13 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   return (
     <div className="mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">{title}</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 truncate">{title}</h1>
           {description && (
-            <p className="mt-1 text-sm text-slate-500 max-w-2xl">{description}</p>
+            <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">{description}</p>
           )}
         </div>
-        {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
+        {action && <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">{action}</div>}
       </div>
       {children && <div className="mt-4">{children}</div>}
     </div>

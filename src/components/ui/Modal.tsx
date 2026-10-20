@@ -147,7 +147,7 @@ export const Modal: React.FC<ModalProps> = ({
         className={`relative w-full ${maxWidths[maxWidth]} bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden z-10 animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 outline-hidden flex flex-col max-h-[90dvh] ${className}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 shrink-0">
           <div className="pr-4 min-w-0">
             <h3 id={titleId} className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate">
               {title}
@@ -173,7 +173,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1">{children}</div>
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );
