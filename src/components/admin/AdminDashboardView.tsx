@@ -110,6 +110,7 @@ export default function AdminDashboardView({
   const [auditLogs, setAuditLogs] = useState<AdminAuditRecord[]>(initialAuditLogs);
   const [healthData, setHealthData] = useState<SystemHealthData>(initialHealth);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
+  const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(20); // 20 seconds default
 
@@ -157,6 +158,10 @@ export default function AdminDashboardView({
   } | null>(null);
 
   const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // REAL-TIME SYNC LOGIC
@@ -535,7 +540,7 @@ export default function AdminDashboardView({
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Last Synchronized: <strong className="text-slate-200 font-mono">{lastRefreshedAt.toLocaleTimeString()}</strong></span>
+              <span>Last Synchronized: <strong className="text-slate-200 font-mono" suppressHydrationWarning>{mounted ? lastRefreshedAt.toLocaleTimeString() : '...'}</strong></span>
             </span>
             <span className="hidden sm:inline text-slate-600">•</span>
             <span className="hidden sm:inline">Operator: <strong className="text-slate-300">{adminEmail}</strong></span>

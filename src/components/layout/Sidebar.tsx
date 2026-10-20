@@ -54,7 +54,7 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
               .from('businesses')
               .select('name')
               .eq('id', bId)
-              .single();
+              .maybeSingle();
             if (b?.name) setBName(b.name);
           }
         }
