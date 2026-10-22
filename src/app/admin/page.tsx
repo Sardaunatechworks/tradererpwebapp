@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   getSuperAdminStats,
+  getAdminTransactionAnalytics,
+  getAdminInventoryAnalytics,
   getAdminBusinesses,
   getAdminUsers,
   getAdminCustomers,
@@ -8,15 +10,20 @@ import {
   getAdminAuditLogs,
   getSystemHealth,
   getSuperAdminContext,
+  SuperAdminStats,
+  AdminTransactionAnalytics,
+  AdminInventoryAnalytics,
 } from '@/app/actions/admin';
 import AdminDashboardView from '@/components/admin/AdminDashboardView';
 
 export default async function AdminPage() {
   const { user } = await getSuperAdminContext();
 
-  const [statsRes, bizRes, usersRes, customersRes, feedbackRes, auditRes, healthRes] =
+  const [statsRes, transRes, invRes, bizRes, usersRes, customersRes, feedbackRes, auditRes, healthRes] =
     await Promise.all([
       getSuperAdminStats(),
+      getAdminTransactionAnalytics(),
+      getAdminInventoryAnalytics(),
       getAdminBusinesses(),
       getAdminUsers(),
       getAdminCustomers(),
@@ -25,7 +32,7 @@ export default async function AdminPage() {
       getSystemHealth(),
     ]);
 
-  const defaultStats = {
+  const defaultStats: SuperAdminStats = {
     totalBusinesses: 0,
     activeBusinesses: 0,
     inactiveBusinesses: 0,
@@ -38,6 +45,41 @@ export default async function AdminPage() {
     totalFeedbackCount: 0,
     averageRating: 5,
     recentActivityCount: 0,
+    totalSalesCount: 0,
+    grossSalesValue: 0,
+    totalCollected: 0,
+    totalProductsCount: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    periodLabel: 'All Time',
+  };
+
+  const defaultTransactions: AdminTransactionAnalytics = {
+    totalTransactions: 0,
+    completedTransactions: 0,
+    cancelledTransactions: 0,
+    grossSalesValue: 0,
+    totalCollected: 0,
+    totalOutstandingCredit: 0,
+    paymentMethods: {
+      cash: { count: 0, value: 0 },
+      bank_transfer: { count: 0, value: 0 },
+      pos: { count: 0, value: 0 },
+      credit: { count: 0, value: 0 },
+      other: { count: 0, value: 0 },
+    },
+    topBusinesses: [],
+    recentTransactions: [],
+  };
+
+  const defaultInventory: AdminInventoryAnalytics = {
+    totalProducts: 0,
+    businessesWithProducts: 0,
+    outOfStockCount: 0,
+    lowStockCount: 0,
+    estimatedTotalValuation: 0,
+    alerts: [],
+    topCatalogs: [],
   };
 
   const defaultHealth = {
@@ -54,6 +96,8 @@ export default async function AdminPage() {
     <div className="space-y-6">
       <AdminDashboardView
         stats={statsRes.data || defaultStats}
+        initialTransactions={transRes.data || defaultTransactions}
+        initialInventory={invRes.data || defaultInventory}
         businesses={bizRes.data || []}
         users={usersRes.data || []}
         customers={customersRes.data || []}

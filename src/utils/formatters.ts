@@ -41,3 +41,20 @@ export function formatNumber(val: number | string | null | undefined): string {
   if (val === null || val === undefined || isNaN(Number(val))) return '0';
   return Number(val).toLocaleString('en-US');
 }
+
+export type AdminDateRange = 'today' | '7d' | '30d' | 'year' | 'all';
+
+export function getDateRangeLabel(range: AdminDateRange = 'all'): string {
+  switch (range) {
+    case 'today':
+      return 'Today';
+    case '7d':
+      return 'Last 7 Days';
+    case '30d':
+      return 'Last 30 Days';
+    case 'year':
+      return 'This Year';
+    default:
+      return 'All Time';
+  }
+}

@@ -9,6 +9,8 @@ import {
   AdminFeedbackRecord,
   AdminBusinessRecord,
   AdminAuditRecord,
+  AdminTransactionRecord,
+  AdminInventoryAlertRecord,
 } from '@/app/actions/admin';
 import { formatDate, formatDateTime } from '@/utils/formatters';
 
@@ -225,3 +227,84 @@ export function exportAuditLogsToCsv(logs: AdminAuditRecord[], filenamePrefix: s
 
   downloadCsvFile(`${filenamePrefix}_${dateStr}.csv`, headers, rows);
 }
+
+/**
+ * Export Platform Transactions as CSV
+ */
+export function exportTransactionsToCsv(
+  transactions: AdminTransactionRecord[],
+  filenamePrefix: string = 'tradererp_transactions'
+) {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const headers = [
+    'Transaction ID',
+    'Receipt / Sale #',
+    'Business / Store',
+    'Customer Name',
+    'Gross Total (NGN)',
+    'Amount Paid (NGN)',
+    'Balance Due (NGN)',
+    'Payment Method',
+    'Payment Status',
+    'Transaction Status',
+    'Date (Formatted)',
+    'Date (ISO)',
+  ];
+
+  const rows = transactions.map((t) => [
+    t.id,
+    t.sale_number,
+    t.business_name || 'N/A',
+    t.customer_name || 'Walk-in Customer',
+    Number(t.total || 0).toFixed(2),
+    Number(t.amount_paid || 0).toFixed(2),
+    Number(t.balance_due || 0).toFixed(2),
+    t.payment_method?.toUpperCase() || 'CASH',
+    t.payment_status?.toUpperCase() || 'PAID',
+    t.status?.toUpperCase() || 'COMPLETED',
+    formatDateTime(t.created_at),
+    t.created_at,
+  ]);
+
+  downloadCsvFile(`${filenamePrefix}_${dateStr}.csv`, headers, rows);
+}
+
+/**
+ * Export Platform Inventory Alerts as CSV
+ */
+export function exportInventoryAlertsToCsv(
+  alerts: AdminInventoryAlertRecord[],
+  filenamePrefix: string = 'tradererp_inventory_alerts'
+) {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const headers = [
+    'Product ID',
+    'Business / Store',
+    'Product Name',
+    'SKU',
+    'Unit',
+    'Current Stock',
+    'Reorder Threshold',
+    'Cost Price (NGN)',
+    'Selling Price (NGN)',
+    'Stock Alert Status',
+    'Last Updated',
+  ];
+
+  const rows = alerts.map((a) => [
+    a.id,
+    a.business_name || 'N/A',
+    a.name,
+    a.sku || 'N/A',
+    a.unit || 'pcs',
+    a.current_stock,
+    a.minimum_stock,
+    Number(a.purchase_price || 0).toFixed(2),
+    Number(a.selling_price || 0).toFixed(2),
+    a.status.replace(/_/g, ' ').toUpperCase(),
+    formatDateTime(a.updated_at),
+  ]);
+
+  downloadCsvFile(`${filenamePrefix}_${dateStr}.csv`, headers, rows);
+}
+
