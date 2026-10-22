@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import AuthRecoveryListener from '@/components/auth/AuthRecoveryListener';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'TraderERP — Business Management for Traders',
@@ -51,6 +52,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* End Google Tag Manager (noscript) */}
         <AuthRecoveryListener />
         {children}
+        <Analytics />
       </body>
     </html>
   );
