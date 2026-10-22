@@ -83,8 +83,15 @@ Any validation mismatch rolls back the entire database transaction, preventing c
 *   **Customer CRM**: Aggregates spend metrics per customer, tracking spent value, transaction counts, and registering branches.
 *   **Debt CRM**: Tracks outstanding balances. Uses a First-In-First-Out (FIFO) aging algorithm to identify credits older than 30 days, labeling debtors with `Overdue` vs `Good` credit status badges.
 *   **Advanced Reports**: Renders dual-timeline charts mapping revenue and realized profit, stock valuation metrics, and CSV spreadsheet exports. Supports CSS print overrides to output formatted PDFs.
-*   **Announcements Feed**: Dedicated notifications inbox (`/notifications`) displaying global announcements sent by the platform owners.
-*   **Super Admin Platform Console**: A closed portal (`/platform`) for platform owners (Super Admins) to monitor registered business entities, manage user overrides, resolve support center tickets, toggle feature flags, adjust global SMTP credentials, and inspect system-wide audit logs.
+*   **Platform Owner Dashboard & Business Intelligence (`/admin`)**: A dedicated executive control center for platform owners (Super Admins) providing real-time multi-tenant telemetry:
+    *   **Platform Overview**: Cumulative gross sales, realized cash/transfer collections, customer receivables (debt), tenant counts, user roles, CSAT scores, and registration trajectories.
+    *   **Time Period Filtering**: Dynamic filters for `Today`, `Last 7 Days`, `Last 30 Days`, `This Year`, and `All Time`.
+    *   **Transaction Analytics**: Strict financial disambiguation (Gross Sales vs Realized Cash vs Credit Receivables vs Voided), payment tender distribution (Cash, Transfer, POS, Credit), top 10 stores ranking by gross volume, and a searchable transaction ledger.
+    *   **Inventory & Stock Alerts**: Cross-tenant catalog monitoring with strict tenant isolation, identifying store-level out-of-stock items, critical low-stock reorder alerts, and catalog valuations without conflating separate business inventory counts.
+    *   **Business Explorer & Drill-Down**: Searchable store directory with store inactivity indicators (`Active Today`, `Past 7 Days`, `Dormant 14d+`, `Inactive 30d+`, `No Sales Yet`), lifetime transaction volume, and an interactive slide-over inspector revealing team hierarchies, recent sales, and low-stock alerts.
+    *   **Audit Compliance Trail**: Full searchable activity monitoring filterable by event type (`sale`, `product`, `business`, `user`, `business_member`, `expense`, `privacy_consent`) and store scope, with a safe JSON Metadata Inspector.
+    *   **Full CSV Export Hub**: Excel-ready (UTF-8 BOM) exports for transactions, inventory alerts, registered stores, platform users, customers, and audit compliance trails.
+*   **Super Admin Platform Console**: A portal (`/platform`) for platform owners to manage user overrides, resolve support tickets, toggle feature flags, adjust global SMTP credentials, and inspect system-wide audit logs.
 
 ---
 
