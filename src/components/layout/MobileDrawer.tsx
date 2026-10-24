@@ -37,6 +37,10 @@ export default function MobileDrawer({ businessName }: { businessName?: string }
 
   const handleLogout = async () => {
     setMobileMoreOpen(false);
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+      window.location.href = '/dashboard';
+      return;
+    }
     await supabase.auth.signOut();
     router.push('/login');
     router.refresh();

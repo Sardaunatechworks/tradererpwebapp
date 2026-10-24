@@ -1,30 +1,8 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { InAppNotification, NotificationCategory, NotificationPayload } from '@/types/notification';
 import { revalidatePath } from 'next/cache';
-
-/**
- * Validates and retrieves current authenticated user and business context
- */
-async function getAuthContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error('Unauthorized');
-  }
-
-  const businessId = user.app_metadata?.business_id;
-  if (!businessId) {
-    throw new Error('No active business found for user');
-  }
-
-  return { supabase, user, businessId };
-}
+import { getAuthContext } from '@/lib/auth/context';
 
 /**
  * Fetch paginated notifications for current tenant user

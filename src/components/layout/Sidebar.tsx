@@ -40,6 +40,7 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
 
   useEffect(() => {
     async function loadUser() {
+      const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserName(user.user_metadata?.name || user.email?.split('@')[0] || 'User');
@@ -58,6 +59,10 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
             if (b?.name) setBName(b.name);
           }
         }
+      } else if (isDemo) {
+        setUserName('Grant Evaluator');
+        setUserRole('Owner');
+        if (!businessName) setBName('Apex Merchants Ltd');
       }
     }
     loadUser();
@@ -76,6 +81,10 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
   ];
 
   const handleLogout = async () => {
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+      window.location.href = '/dashboard';
+      return;
+    }
     await supabase.auth.signOut();
     router.push('/login');
     router.refresh();

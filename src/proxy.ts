@@ -61,9 +61,23 @@ export async function proxy(request: NextRequest) {
     '/terms',
   ];
   const isPublicRoute = publicRoutes.includes(path);
+  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   // If user is not authenticated
   if (!user) {
+    if (isDemoMode) {
+      // Demo environment direct access for grant evaluators:
+      // Redirect root '/' directly to '/dashboard'
+      if (path === '/') {
+        url.pathname = '/dashboard';
+        return NextResponse.redirect(url);
+      }
+      // Allow unrestricted direct exploration of business owner dashboard & operational tabs
+      if (!path.startsWith('/admin')) {
+        return response;
+      }
+    }
+
     if (!isPublicRoute) {
       url.pathname = '/login';
       return NextResponse.redirect(url);

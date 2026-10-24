@@ -1,17 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
-
-async function getAuthContext() {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) throw new Error('Authentication required.');
-
-  const businessId = user.app_metadata?.business_id;
-  if (!businessId) throw new Error('No business workspace context found.');
-
-  return { user, businessId, supabase };
-}
+import { getAuthContext } from '@/lib/auth/context';
 
 function getRangeDates(range: string): { start: string; end: string } {
   const now = new Date();

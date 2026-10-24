@@ -8,6 +8,7 @@ import QuickActionModal from './QuickActionModal';
 import MobileDrawer from './MobileDrawer';
 import FeedbackModal from '@/components/feedback/FeedbackModal';
 import AnnouncementBanner from '@/components/announcements/AnnouncementBanner';
+import DemoEnvironmentBanner from '@/components/demo/DemoEnvironmentBanner';
 import { ToastContainer } from '@/components/ui/Toast';
 
 interface AppLayoutWrapperProps {
@@ -33,6 +34,9 @@ export default function AppLayoutWrapper({
 
         {/* Scrollable Page Body */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-8 py-4 sm:py-6 pb-28 sm:pb-32 lg:pb-8 max-w-7xl w-full mx-auto">
+          {/* Grant Evaluation Demo Banner (Only visible if NEXT_PUBLIC_DEMO_MODE=true) */}
+          <DemoEnvironmentBanner />
+
           {/* Active Platform & Maintenance Announcements */}
           <AnnouncementBanner />
           {children}

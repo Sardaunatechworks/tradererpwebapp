@@ -1,18 +1,7 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { Sale, Product } from '@/types';
-
-async function getAuthContext() {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) throw new Error('Authentication required.');
-
-  const businessId = user.app_metadata?.business_id;
-  if (!businessId) throw new Error('No business workspace found.');
-
-  return { user, businessId, supabase };
-}
+import { getAuthContext } from '@/lib/auth/context';
 
 export interface DashboardData {
   period: 'today' | 'week' | 'month';

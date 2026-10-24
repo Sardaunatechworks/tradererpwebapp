@@ -1,34 +1,9 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { BusinessMember, UserRole } from '@/types';
-
-function getAdminClient() {
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
-}
-
-async function getAuthContext() {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) throw new Error('Authentication required.');
-
-  const businessId = user.app_metadata?.business_id;
-  if (!businessId) throw new Error('No business workspace context found.');
-
-  const role = user.app_metadata?.role || 'staff';
-  return { user, businessId, role, supabase };
-}
+import { getAuthContext, getAdminClient } from '@/lib/auth/context';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET STAFF MEMBERS

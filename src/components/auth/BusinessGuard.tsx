@@ -14,6 +14,12 @@ export default function BusinessGuard({ children }: { children: React.ReactNode 
   useEffect(() => {
     async function checkBusiness() {
       try {
+        if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+          // Allow instant evaluation access in demo mode without login requirement
+          setLoading(false);
+          return;
+        }
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           router.replace('/login');
