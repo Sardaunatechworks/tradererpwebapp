@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 
+export const dynamic = 'force-dynamic';
+
 export default function OnboardingPage() {
   const router = useRouter();
   const supabase = createClient();

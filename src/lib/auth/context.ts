@@ -1,6 +1,7 @@
 import { createClient as createAdminClient, SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { User } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/supabase/config';
 
 export const DEMO_BUSINESS_ID = 'd3300000-0000-0000-0000-000000000001';
 export const DEMO_USER_ID = 'b8df3aee-f601-4594-b0b5-39563c07cfa0';
@@ -15,8 +16,8 @@ export interface AuthContext {
 
 export function getAdminClient(): SupabaseClient {
   return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY,
     {
       auth: {
         autoRefreshToken: false,

@@ -19,6 +19,8 @@ import Logo from '@/components/layout/Logo';
 import PasswordInput from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 
+export const dynamic = 'force-dynamic';
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
