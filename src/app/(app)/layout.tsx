@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { DEMO_BUSINESS_ID } from '@/lib/auth/context';
 
 export const metadata = {
-  title: 'TraderERP — Business Management (Demo)',
+  title: 'TraderERP — Business Management',
   description: 'Simple, professional inventory, sales, expenses, and credit tracking for traders.',
 };
 

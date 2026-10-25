@@ -47,19 +47,30 @@ export default function DashboardOverview() {
     fetchSummary(period);
   }, [period]);
 
-  // Check tour completion on first mount
+  // Check tour completion or trigger immediately on mount
   useEffect(() => {
+    // In demo mode, trigger the Quick Tour immediately upon page load
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+      setTourOpen(true);
+      return;
+    }
+
+    // Support manual trigger via URL query (?tour=true or ?tour=1)
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tour') === 'true' || params.get('tour') === '1') {
+        setTourOpen(true);
+        return;
+      }
+    }
+
     async function checkTour() {
       const localCompleted = localStorage.getItem('tradererp_tour_completed');
       if (localCompleted === 'true') return;
 
       const pref = await getUserTourPreferences();
       if (!pref.tourCompleted) {
-        // Small delay to let the page settle before displaying the tour
-        const timer = setTimeout(() => {
-          setTourOpen(true);
-        }, 800);
-        return () => clearTimeout(timer);
+        setTourOpen(true);
       }
     }
     checkTour();
@@ -90,13 +101,20 @@ export default function DashboardOverview() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              {getTimeGreeting()}, {data?.userName || 'Partner'}
+              {getTimeGreeting()},{' '}
+              {data?.userName ||
+                (process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+                  ? 'Alhaji Musa'
+                  : 'Partner')}
             </h1>
           </div>
           <p className="mt-1 text-xs sm:text-sm text-slate-500">
             Here is your live trade overview for{' '}
             <span className="font-semibold text-slate-800">
-              {data?.businessName || 'your business'}
+              {data?.businessName ||
+                (process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+                  ? 'Apex Merchants Ltd'
+                  : 'your business')}
             </span>{' '}
             ({periodLabels[period].toLowerCase()}).
           </p>
@@ -431,7 +449,12 @@ export default function DashboardOverview() {
       <GuidedTourModal
         isOpen={tourOpen}
         onClose={() => setTourOpen(false)}
-        userName={data?.userName}
+        userName={
+          data?.userName ||
+          (process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+            ? 'Alhaji Musa'
+            : 'Partner')
+        }
       />
     </div>
   );

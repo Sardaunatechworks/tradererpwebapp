@@ -31,7 +31,7 @@ export function getAdminClient(): SupabaseClient {
  * Returns authenticated session context.
  * In production: strictly requires an active authenticated Supabase user and businessId.
  * In demo mode (NEXT_PUBLIC_DEMO_MODE=true): safely falls back to the isolated DEMO_BUSINESS_ID
- * using the scoped administrative client so judges can view and interact without logging in.
+ * using the scoped administrative client for direct business owner access without login barriers.
  */
 export async function getAuthContext(): Promise<AuthContext> {
   const supabase = await createClient();
@@ -54,13 +54,13 @@ export async function getAuthContext(): Promise<AuthContext> {
     const adminSupabase = getAdminClient();
     const mockDemoUser: Partial<User> = {
       id: DEMO_USER_ID,
-      email: 'demo-evaluator@smarttradererp.com.ng',
+      email: 'owner@apexmerchants.com.ng',
       app_metadata: {
         business_id: DEMO_BUSINESS_ID,
         role: 'owner',
       },
       user_metadata: {
-        name: 'Grant Evaluator',
+        name: 'Alhaji Musa',
       },
     };
 

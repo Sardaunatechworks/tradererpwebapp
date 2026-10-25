@@ -67,7 +67,7 @@ export async function proxy(request: NextRequest) {
   // If user is not authenticated
   if (!user) {
     if (isDemoMode) {
-      // Demo environment direct access for grant evaluators:
+      // Demo environment direct exploration:
       // Redirect root '/' directly to '/dashboard'
       if (path === '/') {
         url.pathname = '/dashboard';

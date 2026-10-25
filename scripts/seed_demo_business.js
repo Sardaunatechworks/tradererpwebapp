@@ -29,7 +29,7 @@ const supabase = createClient(supabaseUrl, serviceKey, {
 
 // Deterministic UUIDs for demo environment
 const DEMO_BUSINESS_ID = 'd3300000-0000-0000-0000-000000000001';
-const DEMO_USER_ID = 'b8df3aee-f601-4594-b0b5-39563c07cfa0'; // Created auth user for Grant Evaluator
+const DEMO_USER_ID = 'b8df3aee-f601-4594-b0b5-39563c07cfa0'; // Business Owner (Alhaji Musa)
 
 async function seedDemoBusiness() {
   console.log('🚀 Starting TraderERP Demo Environment Seeding...');
@@ -70,7 +70,7 @@ async function seedDemoBusiness() {
   if (bizErr) throw new Error(`Business insert failed: ${bizErr.message}`);
 
   // 3. Link Demo User in Business Members
-  console.log('👤 Linking Grant Evaluator as Business Owner...');
+  console.log('👤 Linking Alhaji Musa as Business Owner...');
   await supabase.from('business_members').upsert({
     business_id: DEMO_BUSINESS_ID,
     user_id: DEMO_USER_ID,

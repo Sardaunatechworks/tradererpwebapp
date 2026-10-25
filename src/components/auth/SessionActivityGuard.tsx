@@ -10,7 +10,7 @@ const STORAGE_KEY = 'tradererp_last_activity';
 export default function SessionActivityGuard() {
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
-      return; // Do not auto-logout grant judges
+      return; // Keep demo sessions persistent
     }
 
     const supabase = createClient();

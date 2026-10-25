@@ -60,7 +60,7 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
           }
         }
       } else if (isDemo) {
-        setUserName('Grant Evaluator');
+        setUserName('Alhaji Musa');
         setUserRole('Owner');
         if (!businessName) setBName('Apex Merchants Ltd');
       }
