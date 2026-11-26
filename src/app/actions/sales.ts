@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { Sale, PaymentMethod, PaymentStatus } from '@/types';
+import { checkEntitlement } from '@/lib/subscription/entitlement-service';
 
 function getAdminClient() {
   return createAdminClient(
@@ -59,6 +60,11 @@ export async function createSale(params: {
 
     if (params.amountPaid < 0) {
       return { error: 'Amount paid cannot be negative.' };
+    }
+
+    const entitlement = await checkEntitlement(businessId, 'monthly_sales');
+    if (!entitlement.allowed) {
+      return { error: entitlement.message || 'Monthly sales limit reached for your current plan.' };
     }
 
     const discount = params.discount && params.discount > 0 ? params.discount : 0;

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { Customer } from '@/types';
+import { checkEntitlement } from '@/lib/subscription/entitlement-service';
 
 function getAdminClient() {
   return createAdminClient(
@@ -115,6 +116,11 @@ export async function createCustomer(formData: FormData): Promise<{ data?: Custo
 
     if (!name) {
       return { error: 'Customer name is required.' };
+    }
+
+    const entitlement = await checkEntitlement(businessId, 'customers');
+    if (!entitlement.allowed) {
+      return { error: entitlement.message || 'Customer limit reached for your current plan.' };
     }
 
     const supabaseAdmin = getAdminClient();

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { provisionFreeSubscription } from '@/lib/subscription/subscription-service';
 
 export async function onboardBusiness(formData: FormData) {
   const businessName = (formData.get('businessName') as string)?.trim();
@@ -66,6 +67,9 @@ export async function onboardBusiness(formData: FormData) {
     }
 
     const businessId = business.id;
+
+    // 3b. Ensure Free subscription is provisioned (idempotent alongside DB trigger)
+    await provisionFreeSubscription(businessId);
 
     // 4. Create Business Member entry with role 'owner'
     const { error: memberErr } = await supabaseAdmin

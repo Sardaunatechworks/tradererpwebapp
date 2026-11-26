@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { Product, Category, InventoryMovement } from '@/types';
+import { checkEntitlement } from '@/lib/subscription/entitlement-service';
 
 function getAdminClient() {
   return createAdminClient(
@@ -164,6 +165,11 @@ export async function createProduct(formData: FormData): Promise<{ data?: Produc
     }
     if (initialStock < 0 || minimumStock < 0) {
       return { error: 'Stock quantities cannot be negative.' };
+    }
+
+    const entitlement = await checkEntitlement(businessId, 'products');
+    if (!entitlement.allowed) {
+      return { error: entitlement.message || 'Product limit reached for your current plan.' };
     }
 
     const supabaseAdmin = getAdminClient();

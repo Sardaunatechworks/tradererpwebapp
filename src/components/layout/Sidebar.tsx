@@ -72,7 +72,8 @@ export default function Sidebar({ businessName }: { businessName?: string }) {
     { name: 'Credit', href: '/credit', icon: CreditCard },
     { name: 'Reports', href: '/reports', icon: BarChart3 },
     { name: 'Staff', href: '/staff', icon: UserCheck },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Subscription', href: '/settings/subscription', icon: CreditCard },
+    { name: 'Settings', href: '/settings', icon: Settings, exact: true },
   ];
 
   const handleLogout = async () => {

@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { checkEntitlement } from '@/lib/subscription/entitlement-service';
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -199,6 +200,10 @@ export async function getInventoryReport() {
 export async function getPerformanceReport(range: string = 'month') {
   try {
     const { businessId, supabase } = await getAuthContext();
+    const entitlement = await checkEntitlement(businessId, 'advanced_reports');
+    if (!entitlement.allowed) {
+      return { error: entitlement.message || 'Advanced reporting requires TraderERP Pro.' };
+    }
     const { start, end } = getRangeDates(range);
     const startDateStr = start.split('T')[0];
 

@@ -50,6 +50,7 @@ import {
   Tag,
 } from 'lucide-react';
 import AdminAnnouncementsManager from './AdminAnnouncementsManager';
+import AdminSubscriptionsManager from './AdminSubscriptionsManager';
 import {
   SuperAdminStats,
   AdminBusinessRecord,
@@ -110,6 +111,7 @@ type TabType =
   | 'customers'
   | 'feedback'
   | 'announcements'
+  | 'subscriptions'
   | 'audit'
   | 'health';
 
@@ -799,6 +801,7 @@ export default function AdminDashboardView({
           { id: 'customers', label: 'Customers Network', icon: UserCheck, count: stats.totalCustomers },
           { id: 'feedback', label: 'Experience Hub', icon: MessageSquareHeart, count: stats.totalFeedbackCount },
           { id: 'announcements', label: 'Announcements', icon: Megaphone, count: null },
+          { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard, count: null },
           { id: 'audit', label: 'Audit Compliance', icon: ShieldCheck, count: stats.recentActivityCount },
           { id: 'health', label: 'System Health', icon: Server, count: null },
         ].map((tab) => {
@@ -2828,6 +2831,7 @@ export default function AdminDashboardView({
       {/* TAB: ANNOUNCEMENTS */}
       {/* ───────────────────────────────────────────────────────────────────── */}
       {activeTab === 'announcements' && <AdminAnnouncementsManager />}
+      {activeTab === 'subscriptions' && <AdminSubscriptionsManager />}
 
       {/* ───────────────────────────────────────────────────────────────────── */}
       {/* 5. CONFIRMATION MODAL */}

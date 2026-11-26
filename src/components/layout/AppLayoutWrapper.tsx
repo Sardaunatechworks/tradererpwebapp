@@ -8,6 +8,7 @@ import QuickActionModal from './QuickActionModal';
 import MobileDrawer from './MobileDrawer';
 import FeedbackModal from '@/components/feedback/FeedbackModal';
 import AnnouncementBanner from '@/components/announcements/AnnouncementBanner';
+import TrialBanner from '@/components/subscription/TrialBanner';
 import { ToastContainer } from '@/components/ui/Toast';
 
 interface AppLayoutWrapperProps {
@@ -35,6 +36,7 @@ export default function AppLayoutWrapper({
         <main className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-8 py-4 sm:py-6 pb-28 sm:pb-32 lg:pb-8 max-w-7xl w-full mx-auto">
           {/* Active Platform & Maintenance Announcements */}
           <AnnouncementBanner />
+          <TrialBanner />
           {children}
         </main>
 
