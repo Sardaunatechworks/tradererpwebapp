@@ -7,9 +7,11 @@ import ProblemsSection from '@/components/marketing/ProblemsSection';
 import FeaturesSection from '@/components/marketing/FeaturesSection';
 import HowItWorksSection from '@/components/marketing/HowItWorksSection';
 import BenefitsSection from '@/components/marketing/BenefitsSection';
+import PricingSection, { type LandingPlanInfo } from '@/components/marketing/PricingSection';
 import TrustPrivacySection from '@/components/marketing/TrustPrivacySection';
 import FaqSection from '@/components/marketing/FaqSection';
 import Footer from '@/components/marketing/Footer';
+import { getActivePlans } from '@/lib/subscription/plans';
 
 export const metadata: Metadata = {
   title: 'TraderERP — Run Your Business With More Confidence | Retail & Wholesale Management',
@@ -52,6 +54,7 @@ export const metadata: Metadata = {
 
 export default async function LandingPage() {
   let isLoggedIn = false;
+  let plans: LandingPlanInfo[] = [];
 
   try {
     const supabase = await createClient();
@@ -62,6 +65,12 @@ export default async function LandingPage() {
   } catch {
     // If Supabase is unreachable or unconfigured during SSR, safely default to logged out
     isLoggedIn = false;
+  }
+
+  try {
+    plans = await getActivePlans();
+  } catch {
+    plans = [];
   }
 
   return (
@@ -86,7 +95,10 @@ export default async function LandingPage() {
         {/* E. Practical Operational Benefits */}
         <BenefitsSection />
 
-        {/* F. Data Ownership & Trust */}
+        {/* F. Subscription Plans & Pricing */}
+        <PricingSection isLoggedIn={isLoggedIn} plans={plans} />
+
+        {/* G. Data Ownership & Trust */}
         <TrustPrivacySection />
 
         {/* G. Detailed FAQ */}

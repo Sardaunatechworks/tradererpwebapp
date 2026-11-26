@@ -108,6 +108,11 @@ export default function Footer({ isLoggedIn }: FooterProps) {
                 </a>
               </li>
               <li>
+                <a href="#pricing" className="hover:text-blue-600 transition-colors">
+                  Pricing &amp; Plans
+                </a>
+              </li>
+              <li>
                 <a href="#faq" className="hover:text-blue-600 transition-colors">
                   Frequently Asked Questions
                 </a>
